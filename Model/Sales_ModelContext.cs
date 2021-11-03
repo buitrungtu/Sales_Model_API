@@ -40,7 +40,7 @@ namespace Sales_Model.OutputDirectory
             if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
-                optionsBuilder.UseSqlServer("Server=.\\SQLExpress;Database=Sales_Model;Trusted_Connection=True;");
+                optionsBuilder.UseSqlServer("workstation id=SalesModel.mssql.somee.com;packet size=4096;user id=tudefttry_SQLLogin_1;pwd=utnl7fvzym;data source=SalesModel.mssql.somee.com;persist security info=False;initial catalog=SalesModel");
             }
         }
 
@@ -546,7 +546,9 @@ namespace Sales_Model.OutputDirectory
                 entity.ToTable("role");
 
                 entity.Property(e => e.RoleId).HasColumnName("role_id");
-
+                entity.Property(e => e.Role_Code)
+                    .HasMaxLength(50)
+                    .HasColumnName("role_code");
                 entity.Property(e => e.Name)
                     .HasMaxLength(255)
                     .HasColumnName("name");
@@ -623,7 +625,7 @@ namespace Sales_Model.OutputDirectory
                     .HasColumnName("id")
                     .HasDefaultValueSql("(newid())");
 
-                entity.Property(e => e.AccountId).HasColumnName("account_id");
+                entity.Property(e => e.AccountId).HasColumnName("AccountId");
 
                 entity.Property(e => e.Ip)
                     .HasMaxLength(100)

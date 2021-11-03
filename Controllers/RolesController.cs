@@ -1,5 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Sales_Model.Model;
+using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,41 +13,64 @@ using System.Threading.Tasks;
 
 namespace Sales_Model.Controllers
 {
-    [Authorize(Policy = "AllowEditRole")]
     [Route("api/[controller]")]
     [ApiController]
     public class RolesController : ControllerBase
     {
+        private readonly Sales_ModelContext _db;
+        private IMemoryCache _cache;
+
+        public RolesController(Sales_ModelContext context, IMemoryCache memoryCache)
+        {
+            _db = context;
+            _cache = memoryCache;
+
+        }
         // GET: api/<RolesController>
         [HttpGet]
-        public IEnumerable<string> Get()
+        public async Task<ActionResult<IEnumerable<Role>>> GetRoles()
         {
-            return new string[] { "value1", "value2" };
-        }
-
-        // GET api/<RolesController>/5
-        [HttpGet("{id}")]
-        public string Get(int id)
-        {
-            return "value";
-        }
-
-        // POST api/<RolesController>
-        [HttpPost]
-        public void Post([FromBody] string value)
-        {
+            return await _db.Roles.ToListAsync();
         }
 
         // PUT api/<RolesController>/5
         [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        public ServiceResponse EditRole(List<AccountRole> lstAccountRole)
         {
-        }
-
-        // DELETE api/<RolesController>/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
+            ServiceResponse res = new ServiceResponse();
+            if(lstAccountRole != null && lstAccountRole.Count() > 0)
+            {
+                var lstDelete = new List<AccountRole>();
+                var lstInsert = new List<AccountRole>();
+                foreach (var item in lstAccountRole)
+                {
+                    switch (item.State)
+                    {
+                        case 0:
+                            lstDelete.Add(item);
+                            break;
+                        case 2:
+                            lstInsert.Add(item);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                if (lstDelete.Count > 0)
+                {
+                    _db.AccountRoles.RemoveRange(lstDelete);
+                }
+                if (lstInsert.Count > 0)
+                {
+                    _db.AccountRoles.AddRange(lstInsert);
+                }
+                res.Success = true;
+            }
+            else
+            {
+                res.Success = false;
+            }
+            return res;
         }
     }
 }

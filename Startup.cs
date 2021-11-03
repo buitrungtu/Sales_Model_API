@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Serialization;
+using Sales_Model.Model;
 using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
@@ -43,15 +44,6 @@ namespace Sales_Model
                         .AllowAnyMethod()
                         .AllowAnyHeader());
             });
-            //services.AddAuthorization(options =>
-            //{
-            //    options.AddPolicy("AllowEditRole", policyBuilder =>
-            //    {
-            //        //Điều kiện AllowEditRole
-            //        policyBuilder.RequireAuthenticatedUser(); //Phải đăng nhập
-            //        policyBuilder.RequireRole("Admin");// phải là admin
-            //    });
-            //});
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

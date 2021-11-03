@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Sales_Model.Common;
 using Sales_Model.Model;
 using Sales_Model.OutputDirectory;
 using System;
@@ -33,7 +34,11 @@ namespace Sales_Model.Controllers
         {
             return await _db.Accounts.ToListAsync();
         }
-
+        /// <summary>
+        /// Lấy chi tiết thông tin tài khoản
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         // GET api/<AccountsController>/5
         [HttpGet("{id}")]
         public async Task<ServiceResponse> GetAccount(Guid? id)
@@ -55,7 +60,11 @@ namespace Sales_Model.Controllers
             res.Success = true;
             return res;
         }
-
+        /// <summary>
+        /// Đăng nhập
+        /// </summary>
+        /// <param name="account"></param>
+        /// <returns></returns>
         [HttpPost("login")]
         public async Task<ServiceResponse> GetAccount(Account account)
         {
@@ -71,60 +80,67 @@ namespace Sales_Model.Controllers
                 res.ErrorCode = 404;
                 return res;
             }
-            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
             accountResult.LastLogin = DateTime.Now;
-            accountResult.LastIp = ipAddress;
             _db.Entry(accountResult).State = EntityState.Modified;
-            await _db.SaveChangesAsync();
-            string cacheKey = "user_" + ipAddress;
-            _cache.Set(cacheKey, accountResult);
             Dictionary<string, object> result = new Dictionary<string, object>();
-            accountResult.Password = account.Password;
-            result.Add("account", accountResult);
-            string sql_get_role = $"select * from role where role_id in (select role_id from account_role where account_id = '{accountResult.AccountId}')";
+            //Cache lại thông tin tài khoản vừa đăng nhập
+            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            accountResult.LastIp = ipAddress;
+            string sql_get_role = $"select * from role where role_id in (select distinct role_id from account_role where account_id = '{accountResult.AccountId}')";
             var roles = _db.Roles.FromSqlRaw(sql_get_role).ToList();
+            result.Add("account", accountResult);
             result.Add("roles", roles);
+            string cacheKey = "user_" + ipAddress;
+            _cache.Set(cacheKey, result);
+            //Ghi log để làm nhật ký truy cập
+            Helper.WriteLogAsync(_db, _cache, ipAddress, "Login");
             res.Success = true;
             res.Data = result;
-            Auditinglog auditinglog = new Auditinglog();
-            auditinglog.AccountId = accountResult.AccountId;
-
-            //Ghi log
-            //_db.Auditinglogs.Add()
-
             return res;
         }
-
+        /// <summary>
+        /// Đăng xuất
+        /// </summary>
+        /// <returns></returns>
         [HttpPost("logout")]
         public async Task<ServiceResponse> Logout()
         {
             ServiceResponse res = new ServiceResponse();
+            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            string cacheKey = "user_" + ipAddress;
             res.Success = true;
             res.Message = "Đăng xuất thành công";
-            _cache.Set("account_info", new object());
+            //Ghi log để làm nhật ký truy cập
+            Helper.WriteLogAsync(_db, _cache, ipAddress, "Logout");
+            _cache.Set(cacheKey, new object());
             return res;
         }
 
+        /// <summary>
+        /// Thêm tài khoản
+        /// </summary>
+        /// <param name="account"></param>
+        /// <returns></returns>
         [HttpPost]
         public async Task<ServiceResponse> PostAccount(Account account)
         {
             ServiceResponse res = new ServiceResponse();
             try
             {
+                account.AccountId = Guid.NewGuid();
                 _db.Accounts.Add(account);
                 res.Success = true;
-                Account result = _db.Accounts.Where(_ => _.Username == account.Username).FirstOrDefault();
-                res.Data = result;
+                res.Data = account;
                 AccountInfo accInfo = new AccountInfo();
-                accInfo.AccountId = result.AccountId;
-                if (result.Username.Contains("@gmail.com"))
+                accInfo.AccountId = account.AccountId;
+                if (account.Username.Contains("@gmail.com"))
                 {
-                    accInfo.Email = result.Username;
+                    accInfo.Email = account.Username;
                 }
                 _db.AccountInfos.Add(accInfo);
                 await _db.SaveChangesAsync();
             }
-            catch(DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException)
             {
                 res.Success = false;
                 res.ErrorCode = 500; 
@@ -140,6 +156,8 @@ namespace Sales_Model.Controllers
             {
                 _db.Entry(account).State = EntityState.Modified;
                 await _db.SaveChangesAsync();
+                string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                Helper.WriteLogAsync(_db, _cache, ipAddress, "Đổi mật khẩu");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -164,6 +182,8 @@ namespace Sales_Model.Controllers
             try
             {
                 await _db.SaveChangesAsync();
+                string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                Helper.WriteLogAsync(_db, _cache, ipAddress, "Sửa thông tin tài khoản");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -176,19 +196,42 @@ namespace Sales_Model.Controllers
         }
         // DELETE api/<AccountsController>/5
         [HttpDelete("{id}")]
-        public async Task<ActionResult<Account>> DeleteAccount(Guid? id)
+        public async Task<ServiceResponse> DeleteAccount(Guid? id)
         {
-            var account = await _db.Accounts.FindAsync(id);
-            if (account == null)
+            ServiceResponse res = new ServiceResponse();
+            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            if(_cache.Get("user_" + ipAddress) == null) //Nếu không có thông tin tài khoản => thông báo đăng nhập lại
             {
-                return NotFound();
+                res.Success = false;
+                res.Message = "Bạn vui lòng đăng nhập lại để thực hiện chức năng này";
+                res.ErrorCode = 404;
+                res.Data = "Not Found Info Account";
             }
-            AccountInfo accInfo = _db.AccountInfos.Where(_ => _.AccountId == account.AccountId).FirstOrDefault();
-            _db.Accounts.Remove(account);
-            _db.AccountInfos.Remove(accInfo);
-            await _db.SaveChangesAsync();
-
-            return account;
+            else if (!Helper.CheckPermission(_cache, ipAddress, "DeleteAccount"))//Check quyền xóa
+            {
+                res.Success = false;
+                res.Message = "Bạn không có quyền thực hiện chức năng này";
+                res.ErrorCode = 403;
+                res.Data = "Not Permission";
+            }
+            else
+            {
+                var account = await _db.Accounts.FindAsync(id);
+                if (account == null)
+                {
+                    res.Success = false;
+                    res.Message = "Không tìm thấy tài khoản";
+                    res.ErrorCode = 404;
+                }
+                AccountInfo accInfo = _db.AccountInfos.Where(_ => _.AccountId == account.AccountId).FirstOrDefault();
+                _db.Accounts.Remove(account);
+                _db.AccountInfos.Remove(accInfo);
+                await _db.SaveChangesAsync();
+                Helper.WriteLogAsync(_db, _cache, ipAddress, "Xóa tài khoản");
+                res.Data = account;
+                res.Success = true;
+            }
+            return res;
         }
 
         /// <summary>
