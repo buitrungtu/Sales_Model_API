@@ -163,11 +163,10 @@ namespace Sales_Model.Controllers
         /// <param name="product"></param>
         /// <returns></returns>
         /// https://localhost:44335/api/products/edit
-        [HttpPut("edit")]
+        [HttpPost("edit")]
         public async Task<ServiceResponse> PutAccount(Product product)
         {
             ServiceResponse res = new ServiceResponse();
-            
             try
             {
                 _db.Entry(product).State = EntityState.Modified;

@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Newtonsoft.Json;
 using Sales_Model.Common;
 using Sales_Model.Model;
 using Sales_Model.OutputDirectory;
@@ -14,25 +16,37 @@ using System.Threading.Tasks;
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace Sales_Model.Controllers
-{
+{   
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class AccountsController : ControllerBase
     {
+        private readonly IJwtAuthenticationManager _jwtAuthenticationManager;
         private readonly Sales_ModelContext _db;
         private IMemoryCache _cache;
 
-        public AccountsController(Sales_ModelContext context, IMemoryCache memoryCache)
+        public AccountsController(Sales_ModelContext context, IMemoryCache memoryCache, IJwtAuthenticationManager jwtAuthenticationManager)
         {
             _db = context;
             _cache = memoryCache;
-
+            _jwtAuthenticationManager = jwtAuthenticationManager;
         }
         // GET: api/<AccountsController>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Account>>> GetAccounts()
+        public async Task<ServiceResponse> GetAccounts()
         {
-            return await _db.Accounts.ToListAsync();
+            ServiceResponse res = new ServiceResponse();
+            if (Helper.CheckPermission(HttpContext, "Admin")){
+                res.Success = true;
+                res.Data = await _db.Accounts.ToListAsync();
+                return res;
+
+            }
+            res.Success = false;
+            res.Message = "Bạn không có quyền này";
+            res.ErrorCode = 403;
+            return res;
         }
         /// <summary>
         /// Lấy chi tiết thông tin tài khoản
@@ -65,38 +79,11 @@ namespace Sales_Model.Controllers
         /// </summary>
         /// <param name="account"></param>
         /// <returns></returns>
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<ServiceResponse> GetAccount(Account account)
         {
-            ServiceResponse res = new ServiceResponse();
-
-            string password = this.EncodeMD5(account.Password);
-            var accountResult = _db.Accounts.Where(_ => _.Username == account.Username && _.Password == password).FirstOrDefault();
-            if (accountResult == null)
-            {
-                res.Message = "Thông tin đăng nhập không chính xác!";
-                res.Success = true;
-                res.Data = null;
-                res.ErrorCode = 404;
-                return res;
-            }
-            accountResult.LastLogin = DateTime.Now;
-            _db.Entry(accountResult).State = EntityState.Modified;
-            Dictionary<string, object> result = new Dictionary<string, object>();
-            //Cache lại thông tin tài khoản vừa đăng nhập
-            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-            accountResult.LastIp = ipAddress;
-            string sql_get_role = $"select * from role where role_id in (select distinct role_id from account_role where account_id = '{accountResult.AccountId}')";
-            var roles = _db.Roles.FromSqlRaw(sql_get_role).ToList();
-            result.Add("account", accountResult);
-            result.Add("roles", roles);
-            string cacheKey = "user_" + ipAddress;
-            _cache.Set(cacheKey, result);
-            //Ghi log để làm nhật ký truy cập
-            Helper.WriteLogAsync(_db, _cache, ipAddress, "Login");
-            res.Success = true;
-            res.Data = result;
-            return res;
+            return _jwtAuthenticationManager.LoginAuthenticate(_db, account.Username, account.Password);
         }
         /// <summary>
         /// Đăng xuất
@@ -106,13 +93,10 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> Logout()
         {
             ServiceResponse res = new ServiceResponse();
-            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-            string cacheKey = "user_" + ipAddress;
             res.Success = true;
             res.Message = "Đăng xuất thành công";
             //Ghi log để làm nhật ký truy cập
-            Helper.WriteLogAsync(_db, _cache, ipAddress, "Logout");
-            _cache.Set(cacheKey, new object());
+            Helper.WriteLogAsync(_db, HttpContext, "Logout");
             return res;
         }
 
@@ -128,6 +112,7 @@ namespace Sales_Model.Controllers
             try
             {
                 account.AccountId = Guid.NewGuid();
+                account.Password = this.EncodeMD5(account.Password);
                 _db.Accounts.Add(account);
                 res.Success = true;
                 res.Data = account;
@@ -147,17 +132,20 @@ namespace Sales_Model.Controllers
             }
             return res;
         }
-        // PUT api/<AccountsController>/5
-        [HttpPut("{id}")]
-        public async Task<ServiceResponse> PutAccount(Guid? id, Account account)
+        /// <summary>
+        /// Sửa tài khoản
+        /// </summary>
+        /// <param name="account"></param>
+        /// <returns></returns>
+        [HttpPost("edit_account")]
+        public async Task<ServiceResponse> PutAccount(Account account)
         {
             ServiceResponse res = new ServiceResponse();
             try
             {
                 _db.Entry(account).State = EntityState.Modified;
                 await _db.SaveChangesAsync();
-                string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-                Helper.WriteLogAsync(_db, _cache, ipAddress, "Đổi mật khẩu");
+                Helper.WriteLogAsync(_db, HttpContext ,"Thay đổi thông tin tài khoản");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -174,7 +162,7 @@ namespace Sales_Model.Controllers
         /// <param name="id"></param>
         /// <param name="accInfo"></param>
         /// <returns></returns>
-        [HttpPut("edit_info")]
+        [HttpPost("edit_info")]
         public async Task<ServiceResponse> EditAccountInfo(Guid? id, AccountInfo accInfo)
         {
             ServiceResponse res = new ServiceResponse();
@@ -183,7 +171,7 @@ namespace Sales_Model.Controllers
             {
                 await _db.SaveChangesAsync();
                 string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-                Helper.WriteLogAsync(_db, _cache, ipAddress, "Sửa thông tin tài khoản");
+                Helper.WriteLogAsync(_db, HttpContext, "Sửa thông tin tài khoản chi tiết");
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -207,7 +195,7 @@ namespace Sales_Model.Controllers
                 res.ErrorCode = 404;
                 res.Data = "Not Found Info Account";
             }
-            else if (!Helper.CheckPermission(_cache, ipAddress, "DeleteAccount"))//Check quyền xóa
+            else if (!Helper.CheckPermission(HttpContext, "DeleteAccount"))//Check quyền xóa
             {
                 res.Success = false;
                 res.Message = "Bạn không có quyền thực hiện chức năng này";
@@ -227,13 +215,12 @@ namespace Sales_Model.Controllers
                 _db.Accounts.Remove(account);
                 _db.AccountInfos.Remove(accInfo);
                 await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(_db, _cache, ipAddress, "Xóa tài khoản");
+                Helper.WriteLogAsync(_db, HttpContext, "Xóa tài khoản");
                 res.Data = account;
                 res.Success = true;
             }
             return res;
         }
-
         /// <summary>
         /// Mã hóa MD5
         /// </summary>

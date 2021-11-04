@@ -34,7 +34,7 @@ namespace Sales_Model.Controllers
         }
 
         // PUT api/<RolesController>/5
-        [HttpPut("{id}")]
+        [HttpPost("edit_role")]
         public ServiceResponse EditRole(List<AccountRole> lstAccountRole)
         {
             ServiceResponse res = new ServiceResponse();
