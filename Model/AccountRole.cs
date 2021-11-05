@@ -13,5 +13,13 @@ namespace Sales_Model.OutputDirectory
 
         [NotMapped]
         public int State { get; set; }
+        [NotMapped]
+        public string Username { get; set; }
+        [NotMapped]
+        public int Status { get; set; }
+        [NotMapped]
+        public string Role_code { get; set; }
+        [NotMapped]
+        public string Name { get; set; }
     }
 }

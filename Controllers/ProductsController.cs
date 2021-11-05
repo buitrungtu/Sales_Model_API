@@ -99,7 +99,7 @@ namespace Sales_Model.Controllers
             {
                 product.ProductId = Guid.NewGuid();
                 _db.Products.Add(product);
-                if(product.ProductCategories.Count > 0)
+                if(product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
                     foreach (var item in product.ProductCategories)
                     {
@@ -107,7 +107,7 @@ namespace Sales_Model.Controllers
                     }
                     _db.ProductCategories.AddRange(product.ProductCategories);
                 }
-                if (product.ProductMetas.Count > 0)
+                if (product.ProductMetas != null && product.ProductMetas.Count > 0)
                 {
                     foreach (var item in product.ProductMetas)
                     {
@@ -115,7 +115,7 @@ namespace Sales_Model.Controllers
                     }
                     _db.ProductMeta.AddRange(product.ProductMetas);
                 }
-                if (product.ProductTags.Count > 0)
+                if (product.ProductTags != null && product.ProductTags.Count > 0)
                 {
                     foreach(var item in product.ProductTags)
                     {
@@ -171,7 +171,7 @@ namespace Sales_Model.Controllers
             {
                 _db.Entry(product).State = EntityState.Modified;
                 //Xử lý các bảng liên quan
-                if (product.ProductCategories.Count > 0)
+                if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
                     var lstDelete = new List<ProductCategory>();
                     var lstInsert = new List<ProductCategory>();
@@ -198,7 +198,7 @@ namespace Sales_Model.Controllers
                         _db.ProductCategories.AddRange(lstInsert);
                     }
                 }
-                if (product.ProductTags.Count > 0)
+                if (product.ProductTags != null && product.ProductTags.Count > 0)
                 {
                     var lstDelete = new List<ProductTag>();
                     var lstInsert = new List<ProductTag>();
@@ -225,7 +225,7 @@ namespace Sales_Model.Controllers
                         _db.ProductTags.AddRange(lstInsert);
                     }
                 }
-                if (product.ProductMetas.Count > 0)
+                if (product.ProductMetas != null && product.ProductMetas.Count > 0)
                 {
                     var lstDelete = new List<ProductMetum>();
                     var lstInsert = new List<ProductMetum>();

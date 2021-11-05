@@ -83,7 +83,18 @@ namespace Sales_Model.Controllers
         [HttpPost("login")]
         public async Task<ServiceResponse> GetAccount(Account account)
         {
-            return _jwtAuthenticationManager.LoginAuthenticate(_db, account.Username, account.Password);
+            ServiceResponse res = new ServiceResponse();
+            res.Data = _jwtAuthenticationManager.LoginAuthenticate(_db, account.Username, account.Password).Data;
+            if(res.Data != null)
+            {
+                //Ghi log để làm nhật ký truy cập
+                Auditinglog auditinglog = new Auditinglog();
+                auditinglog.Action = "Login";
+                auditinglog.Username = account.Username;
+                _db.Auditinglogs.Add(auditinglog);
+                await _db.SaveChangesAsync();
+            }
+            return res;
         }
         /// <summary>
         /// Đăng xuất
