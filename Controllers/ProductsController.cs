@@ -90,7 +90,7 @@ namespace Sales_Model.Controllers
         /// </summary>
         /// <param name="slug">slug url của product</param>
         /// <returns></returns>
-        /// https://localhost:44335/api/products/detail?id=7e8dbefb-74e6-46c5-9386-302008af7fb3
+        /// https://localhost:44335/api/products/detail/slug?id=7e8dbefb-74e6-46c5-9386-302008af7fb3
         [HttpGet("detail/slug")]
         public async Task<ServiceResponse> GetProductBySlug(string slug)
         {
@@ -137,6 +137,11 @@ namespace Sales_Model.Controllers
             try
             {
                 product.ProductId = Guid.NewGuid();
+                if (string.IsNullOrEmpty(product.Slug.Trim()))
+                {
+                    string defaultSlug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title) + DateTime.Now.ToString();
+                    product.Slug = defaultSlug;
+                }
                 _db.Products.Add(product);
                 if(product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
@@ -208,6 +213,11 @@ namespace Sales_Model.Controllers
             ServiceResponse res = new ServiceResponse();
             try
             {
+                if (string.IsNullOrEmpty(product.Slug.Trim()))
+                {
+                    string defaultSlug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title) + DateTime.Now.ToString();
+                    product.Slug = defaultSlug;
+                }
                 _db.Entry(product).State = EntityState.Modified;
                 //Xử lý các bảng liên quan
                 if (product.ProductCategories != null && product.ProductCategories.Count > 0)
