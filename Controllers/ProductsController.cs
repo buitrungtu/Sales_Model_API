@@ -86,6 +86,45 @@ namespace Sales_Model.Controllers
             return res;
         }
         /// <summary>
+        /// Lấy thông tin chi tiết product theo slug url
+        /// </summary>
+        /// <param name="slug">slug url của product</param>
+        /// <returns></returns>
+        /// https://localhost:44335/api/products/detail?id=7e8dbefb-74e6-46c5-9386-302008af7fb3
+        [HttpGet("detail/slug")]
+        public async Task<ServiceResponse> GetProductBySlug(string slug)
+        {
+            ServiceResponse res = new ServiceResponse();
+            var userInfo = _cache.Get("account_info");
+            var product = await _db.Products.Where(p => p.Slug.Equals(slug)).FirstOrDefaultAsync();
+            if (product == null)
+            {
+                res.Message = "Không tìm thấy sản phẩm này";
+                res.ErrorCode = 404;
+                res.Success = false;
+                res.Data = null;
+            }
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            result.Add("product", product);
+            //Lấy product review
+            var product_review = _db.ProductReviews.Where(_ => _.ProductId == product.ProductId);
+            result.Add("product_review", product_review);
+            //Lấy product meta
+            var product_meta = _db.ProductMeta.Where(_ => _.ProductId == product.ProductId);
+            result.Add("product_meta", product_meta);
+            //Lấy category của product
+            string sql_get_category = $"select * from category where category_id in (select category_id from product_category where product_id = '{product.ProductId}')";
+            var categories = _db.Categories.FromSqlRaw(sql_get_category).ToList();
+            result.Add("categories", categories);
+            ////Lấy category của product
+            string sql_get_tag = $"select * from tag where tag_id in (select tag_id from product_tag where product_id = '{product.ProductId}')";
+            var tags = _db.Tags.FromSqlRaw(sql_get_tag).ToList();
+            result.Add("tags", tags);
+            res.Data = result;
+            res.Success = true;
+            return res;
+        }
+        /// <summary>
         /// Thêm product
         /// </summary>
         /// <param name="product"></param>
