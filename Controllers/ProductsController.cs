@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Sales_Model.Common;
+using Sales_Model.Constants;
 using Sales_Model.Model;
 using Sales_Model.OutputDirectory;
 using System;
@@ -46,6 +47,7 @@ namespace Sales_Model.Controllers
             pagingData.Data = records.Skip((page - 1) * record).Take(record).ToList();
             return pagingData;
         }
+        
         /// <summary>
         /// Lấy thông tin chi tiết product theo id
         /// </summary>
@@ -60,7 +62,7 @@ namespace Sales_Model.Controllers
             var product = await _db.Products.FindAsync(id);
             if (product == null)
             {
-                res.Message = "Không tìm thấy sản phẩm này";
+                res.Message = Message.ProductNotFound;
                 res.ErrorCode = 404;
                 res.Success = false;
                 res.Data = null;
@@ -85,6 +87,7 @@ namespace Sales_Model.Controllers
             res.Success = true;
             return res;
         }
+        
         /// <summary>
         /// Lấy thông tin chi tiết product theo slug url
         /// </summary>
@@ -99,7 +102,7 @@ namespace Sales_Model.Controllers
             var product = await _db.Products.Where(p => p.Slug.Equals(slug)).FirstOrDefaultAsync();
             if (product == null)
             {
-                res.Message = "Không tìm thấy sản phẩm này";
+                res.Message = Message.ProductNotFound;
                 res.ErrorCode = 404;
                 res.Success = false;
                 res.Data = null;
@@ -124,6 +127,7 @@ namespace Sales_Model.Controllers
             res.Success = true;
             return res;
         }
+        
         /// <summary>
         /// Thêm product
         /// </summary>
@@ -137,11 +141,7 @@ namespace Sales_Model.Controllers
             try
             {
                 product.ProductId = Guid.NewGuid();
-                if (string.IsNullOrEmpty(product.Slug.Trim()))
-                {
-                    string defaultSlug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title) + DateTime.Now.ToString();
-                    product.Slug = defaultSlug;
-                }
+                product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title) + DateTime.Now.ToFileTime().ToString();
                 _db.Products.Add(product);
                 if(product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
@@ -168,16 +168,19 @@ namespace Sales_Model.Controllers
                     _db.ProductTags.AddRange(product.ProductTags);
                 }
                 await _db.SaveChangesAsync();
+                Helper.WriteLogAsync(_db, HttpContext, Message.ProductLogAdd);
                 res.Success = true;
                 res.Data = _db.Products.Where(_ => _.ProductCode == product.ProductCode).FirstOrDefault();
             }
             catch (DbUpdateConcurrencyException)
             {
                 res.Success = false;
+                res.Message = Message.ErrorMsg;
                 res.ErrorCode = 500;
             }
             return res;
         }
+        
         /// <summary>
         /// Thêm review
         /// </summary>
@@ -197,10 +200,12 @@ namespace Sales_Model.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 res.Success = false;
+                res.Message = Message.ErrorMsg;
                 res.ErrorCode = 500;
             }
             return res;
         }
+        
         /// <summary>
         /// Sửa thông tin product
         /// </summary>
@@ -213,12 +218,8 @@ namespace Sales_Model.Controllers
             ServiceResponse res = new ServiceResponse();
             try
             {
-                if (string.IsNullOrEmpty(product.Slug.Trim()))
-                {
-                    string defaultSlug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title) + DateTime.Now.ToString();
-                    product.Slug = defaultSlug;
-                }
                 _db.Entry(product).State = EntityState.Modified;
+                product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title) + DateTime.Now.ToFileTime().ToString();
                 //Xử lý các bảng liên quan
                 if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
@@ -302,11 +303,12 @@ namespace Sales_Model.Controllers
                     }
                 }
                 await _db.SaveChangesAsync();
+                Helper.WriteLogAsync(_db, HttpContext, Message.ProductLogChange);
             }
             catch (DbUpdateConcurrencyException)
             {
                 res.Success = false;
-                res.Message = "Có lỗi sảy ra";
+                res.Message = Message.ErrorMsg;
                 res.ErrorCode = 500;
                 return res;
             }
@@ -327,7 +329,7 @@ namespace Sales_Model.Controllers
                 var product = await _db.Products.FindAsync(id);
                 if (product == null)
                 {
-                    res.Message = "Sản phẩm này không tồn tại";
+                    res.Message = Message.ProductNotExist;
                     res.ErrorCode = 404;
                     res.Success = false;
                 }
@@ -341,13 +343,14 @@ namespace Sales_Model.Controllers
                 var lstProductTags = _db.ProductTags.Where(_ => _.ProductId == product.ProductId);
                 _db.ProductTags.RemoveRange(lstProductTags);
                 await _db.SaveChangesAsync();
+                Helper.WriteLogAsync(_db, HttpContext, Message.ProductLogDelete);
                 res.Data = product;
             }
             catch
             {
                 res.Success = false;
                 res.ErrorCode = 500;
-                res.Message = "Có lỗi sảy ra";
+                res.Message = Message.ErrorMsg;
             }
             return res;
         }

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
 using Sales_Model.Common;
+using Sales_Model.Constants;
 using Sales_Model.Model;
 using Sales_Model.OutputDirectory;
 using System;
@@ -16,7 +17,7 @@ using System.Threading.Tasks;
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace Sales_Model.Controllers
-{   
+{
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
@@ -37,14 +38,15 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> GetAccounts()
         {
             ServiceResponse res = new ServiceResponse();
-            if (Helper.CheckPermission(HttpContext, "Admin")){
+            if (Helper.CheckPermission(HttpContext, "Admin"))
+            {
                 res.Success = true;
                 res.Data = await _db.Accounts.ToListAsync();
                 return res;
 
             }
             res.Success = false;
-            res.Message = "Bạn không có quyền này";
+            res.Message = Message.NotAuthorize;
             res.ErrorCode = 403;
             return res;
         }
@@ -62,11 +64,11 @@ namespace Sales_Model.Controllers
             if (account == null)
             {
                 res.Data = null;
-                res.Message = "Không tìm thấy tài khoản này";
+                res.Message = Message.AccountNotFound;
                 res.ErrorCode = 404;
                 return res;
             }
-            var account_info = _db.AccountInfos.Where(_=>_.AccountId == account.AccountId).FirstOrDefault();
+            var account_info = _db.AccountInfos.Where(_ => _.AccountId == account.AccountId).FirstOrDefault();
             Dictionary<string, object> result = new Dictionary<string, object>();
             result.Add("account", account);
             result.Add("account_info", account_info);
@@ -85,11 +87,11 @@ namespace Sales_Model.Controllers
         {
             ServiceResponse res = new ServiceResponse();
             res.Data = _jwtAuthenticationManager.LoginAuthenticate(_db, account.Username, account.Password).Data;
-            if(res.Data != null)
+            if (res.Data != null)
             {
                 //Ghi log để làm nhật ký truy cập
                 Auditinglog auditinglog = new Auditinglog();
-                auditinglog.Action = "Login";
+                auditinglog.Action = Message.AccountLogLogin;
                 auditinglog.Username = account.Username;
                 _db.Auditinglogs.Add(auditinglog);
                 await _db.SaveChangesAsync();
@@ -105,9 +107,9 @@ namespace Sales_Model.Controllers
         {
             ServiceResponse res = new ServiceResponse();
             res.Success = true;
-            res.Message = "Đăng xuất thành công";
+            res.Message = Message.AccountLogoutSuccess;
             //Ghi log để làm nhật ký truy cập
-            Helper.WriteLogAsync(_db, HttpContext, "Logout");
+            Helper.WriteLogAsync(_db, HttpContext, Message.AccountLogLogout);
             return res;
         }
 
@@ -138,8 +140,9 @@ namespace Sales_Model.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
+                res.Message = Message.ErrorMsg;
                 res.Success = false;
-                res.ErrorCode = 500; 
+                res.ErrorCode = 500;
             }
             return res;
         }
@@ -156,12 +159,12 @@ namespace Sales_Model.Controllers
             {
                 _db.Entry(account).State = EntityState.Modified;
                 await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(_db, HttpContext ,"Thay đổi thông tin tài khoản");
+                Helper.WriteLogAsync(_db, HttpContext, Message.AccountLogChange);
             }
             catch (DbUpdateConcurrencyException)
             {
                 res.Success = false;
-                res.Message = "Có lỗi sảy ra";
+                res.Message = Message.ErrorMsg;
                 res.ErrorCode = 500;
                 return res;
             }
@@ -187,7 +190,7 @@ namespace Sales_Model.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 res.Success = false;
-                res.Message = "Có lỗi sảy ra";
+                res.Message = Message.ErrorMsg;
                 res.ErrorCode = 500;
                 return res;
             }
@@ -199,19 +202,19 @@ namespace Sales_Model.Controllers
         {
             ServiceResponse res = new ServiceResponse();
             string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-            if(_cache.Get("user_" + ipAddress) == null) //Nếu không có thông tin tài khoản => thông báo đăng nhập lại
+            if (_cache.Get("user_" + ipAddress) == null) //Nếu không có thông tin tài khoản => thông báo đăng nhập lại
             {
                 res.Success = false;
-                res.Message = "Bạn vui lòng đăng nhập lại để thực hiện chức năng này";
+                res.Message = Message.AccountLoginAgain;
                 res.ErrorCode = 404;
-                res.Data = "Not Found Info Account";
+                res.Data = Message.AccountNotFound;
             }
             else if (!Helper.CheckPermission(HttpContext, "DeleteAccount"))//Check quyền xóa
             {
                 res.Success = false;
-                res.Message = "Bạn không có quyền thực hiện chức năng này";
+                res.Message = Message.NotAuthorize;
                 res.ErrorCode = 403;
-                res.Data = "Not Permission";
+                res.Data = Message.NotAuthorize;
             }
             else
             {
@@ -219,14 +222,14 @@ namespace Sales_Model.Controllers
                 if (account == null)
                 {
                     res.Success = false;
-                    res.Message = "Không tìm thấy tài khoản";
+                    res.Message = Message.AccountNotFound;
                     res.ErrorCode = 404;
                 }
                 AccountInfo accInfo = _db.AccountInfos.Where(_ => _.AccountId == account.AccountId).FirstOrDefault();
                 _db.Accounts.Remove(account);
                 _db.AccountInfos.Remove(accInfo);
                 await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(_db, HttpContext, "Xóa tài khoản");
+                Helper.WriteLogAsync(_db, HttpContext, Message.AccountLogDelete);
                 res.Data = account;
                 res.Success = true;
             }
