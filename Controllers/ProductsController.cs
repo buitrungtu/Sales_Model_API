@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Sales_Model.Common;
@@ -16,6 +17,7 @@ using System.Threading.Tasks;
 
 namespace Sales_Model.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class ProductsController : ControllerBase
@@ -34,6 +36,7 @@ namespace Sales_Model.Controllers
         /// <param name="record">số bản ghi trên 1 trang</param>
         /// <returns></returns>
         /// https://localhost:44335/api/products?page=2&&record=10
+        [AllowAnonymous]
         [HttpGet]
         public async Task<ActionResult<PagingData>> GetSuppliersByPage([FromQuery] int page, [FromQuery] int record)
         {
@@ -47,13 +50,14 @@ namespace Sales_Model.Controllers
             pagingData.Data = records.Skip((page - 1) * record).Take(record).ToList();
             return pagingData;
         }
-        
+
         /// <summary>
         /// Lấy thông tin chi tiết product theo id
         /// </summary>
         /// <param name="id">id của product</param>
         /// <returns></returns>
         /// https://localhost:44335/api/products/detail?id=7e8dbefb-74e6-46c5-9386-302008af7fb3
+        [AllowAnonymous]
         [HttpGet("detail")]
         public async Task<ServiceResponse> GetProduct(Guid? id)
         {
@@ -87,18 +91,18 @@ namespace Sales_Model.Controllers
             res.Success = true;
             return res;
         }
-        
+
         /// <summary>
         /// Lấy thông tin chi tiết product theo slug url
         /// </summary>
         /// <param name="slug">slug url của product</param>
         /// <returns></returns>
         /// https://localhost:44335/api/products/detail/slug?id=7e8dbefb-74e6-46c5-9386-302008af7fb3
+        [AllowAnonymous]
         [HttpGet("detail/slug")]
         public async Task<ServiceResponse> GetProductBySlug(string slug)
         {
             ServiceResponse res = new ServiceResponse();
-            var userInfo = _cache.Get("account_info");
             var product = await _db.Products.Where(p => p.Slug.Equals(slug)).FirstOrDefaultAsync();
             if (product == null)
             {
@@ -147,6 +151,14 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> PostProduct(Product product)
         {
             ServiceResponse res = new ServiceResponse();
+            if (!Helper.CheckPermission(HttpContext, "AddProduct"))//Check quyền
+            {
+                res.Success = false;
+                res.Message = Message.NotAuthorize;
+                res.ErrorCode = 403;
+                res.Data = Message.NotAuthorize;
+                return res;
+            }
             try
             {
                 product.ProductId = Guid.NewGuid();
@@ -226,11 +238,30 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> PutAccount(Product product)
         {
             ServiceResponse res = new ServiceResponse();
+            if (!Helper.CheckPermission(HttpContext, "EditProduct"))//Check quyền
+            {
+                res.Success = false;
+                res.Message = Message.NotAuthorize;
+                res.ErrorCode = 403;
+                res.Data = Message.NotAuthorize;
+                return res;
+            }
             try
             {
-                _db.Entry(product).State = EntityState.Modified;
-                product.Title = product.Title.Trim();
-                product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title.Trim()) + DateTime.Now.ToFileTime().ToString();
+                //Chỉ cập nhật những thông tin được phép thay đổi
+                Product productDb = _db.Products.SingleOrDefault(_ => _.ProductId == product.ProductId);
+                productDb.ProductCode = product.ProductCode;
+                productDb.Title = product.Title.Trim(); ;
+                productDb.MetaTitle = product.MetaTitle;
+                productDb.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title.Trim()) + DateTime.Now.ToFileTime().ToString(); ;
+                productDb.Summary = product.Summary;
+                productDb.Type = product.Type;
+                productDb.Sku = product.Sku;
+                productDb.Price = product.Price;
+                productDb.Discount = product.Discount;
+                productDb.Quantity = product.Quantity;
+                productDb.Shop = product.Shop;
+                productDb.Content = product.Content;
                 //Xử lý các bảng liên quan
                 if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
@@ -240,10 +271,10 @@ namespace Sales_Model.Controllers
                     {
                         switch (item.State)
                         {
-                            case 0:
+                            case (int)RecordStatus.Delete:
                                 lstDelete.Add(item);
                                 break;
-                            case 2:
+                            case (int)RecordStatus.Add:
                                 lstInsert.Add(item);
                                 break;
                             default:
@@ -267,10 +298,10 @@ namespace Sales_Model.Controllers
                     {
                         switch (item.State)
                         {
-                            case 0:
+                            case (int)RecordStatus.Delete:
                                 lstDelete.Add(item);
                                 break;
-                            case 2:
+                            case (int)RecordStatus.Add:
                                 lstInsert.Add(item);
                                 break;
                             default:
@@ -294,10 +325,10 @@ namespace Sales_Model.Controllers
                     {
                         switch (item.State)
                         {
-                            case 0:
+                            case (int)RecordStatus.Delete:
                                 lstDelete.Add(item);
                                 break;
-                            case 2:
+                            case (int)RecordStatus.Add:
                                 lstInsert.Add(item);
                                 break;
                             default:
@@ -335,6 +366,14 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> DeleteAccount(Guid? id)
         {
             ServiceResponse res = new ServiceResponse();
+            if (!Helper.CheckPermission(HttpContext, "DeleteProduct"))//Check quyền xóa
+            {
+                res.Success = false;
+                res.Message = Message.NotAuthorize;
+                res.ErrorCode = 403;
+                res.Data = Message.NotAuthorize;
+                return res;
+            }
             try
             {
                 var product = await _db.Products.FindAsync(id);

@@ -7,6 +7,7 @@ namespace Sales_Model.Constants
 {
     public class Message
     {
+        //Xử lý message tài khoản
         public const string ErrorMsg = "Có lỗi xảy ra";
         public const string ProductNotExist = "Sản phẩm này không tồn tại";
         public const string ProductNotFound = "Không tìm thấy sản phẩm này";
@@ -20,7 +21,9 @@ namespace Sales_Model.Constants
         public const string AccountLogDelete = "Xóa tài khoản";
         public const string AccountLogLogout = "Logout";
         public const string AccountLogChange = "Thay đổi thông tin tài khoản";
+        public const string AccountLogPassword = "Thay đổi mật khẩu";
 
+        //Xử lý message sản phẩm
         public const string ProductLogChange = "Thay đổi thông tin sản phẩm";
         public const string ProductLogDelete = "Xóa sản phẩm";
         public const string ProductLogAdd = "Thêm mới sản phẩm";

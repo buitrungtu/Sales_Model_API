@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
@@ -10,9 +10,7 @@ using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Sales_Model
 {
@@ -27,7 +25,7 @@ namespace Sales_Model
         {
 
             ServiceResponse res = new ServiceResponse();
-            string passwordMD5 = this.EncodeMD5(password);
+            string passwordMD5 = Helper.EncodeMD5(password);
             var accountResult = _db.Accounts.Where(_ => _.Username == username && _.Password == passwordMD5).FirstOrDefault();
             if (accountResult == null)
             {
@@ -40,11 +38,8 @@ namespace Sales_Model
             accountResult.LastLogin = DateTime.Now;
             _db.Entry(accountResult).State = EntityState.Modified;
             Dictionary<string, object> result = new Dictionary<string, object>();
-            //Cache lại thông tin tài khoản vừa đăng nhập
-            //string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-            //accountResult.LastIp = ipAddress;
-            string sql_get_role = $"select * from role where role_id in (select distinct role_id from account_role where account_id = '{accountResult.AccountId}')";
-            var roles = _db.Roles.FromSqlRaw(sql_get_role).ToList();
+            string sql_get_role = $"select * from role where role_id in (select distinct role_id from account_role where account_id = @account_id)";
+            var roles = _db.Roles.FromSqlRaw(sql_get_role, new SqlParameter("@account_id", accountResult.AccountId)).ToList();
             result.Add("account", accountResult);
             result.Add("roles", roles);
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -63,31 +58,6 @@ namespace Sales_Model
             res.Success = true;
             res.Data = result;
             return res; 
-        }
-
-       
-
-        /// <summary>
-        /// Mã hóa MD5
-        /// </summary>
-        /// <param name="str"></param>
-        /// <returns></returns>
-        private string EncodeMD5(string str)
-        {
-            string result = "";
-            if (str != null)
-            {
-                MD5 md = MD5.Create();
-                byte[] bytePass = Encoding.ASCII.GetBytes(str);
-                byte[] byteResult = md.ComputeHash(bytePass);
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < byteResult.Length; i++)
-                {
-                    sb.Append(byteResult[i].ToString("X2"));
-                }
-                result = sb.ToString();
-            }
-            return result;
         }
     }
 }

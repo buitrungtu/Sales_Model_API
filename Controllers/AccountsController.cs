@@ -1,8 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
-using Newtonsoft.Json;
 using Sales_Model.Common;
 using Sales_Model.Constants;
 using Sales_Model.Model;
@@ -10,8 +9,6 @@ using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -25,12 +22,10 @@ namespace Sales_Model.Controllers
     {
         private readonly IJwtAuthenticationManager _jwtAuthenticationManager;
         private readonly Sales_ModelContext _db;
-        private IMemoryCache _cache;
 
-        public AccountsController(Sales_ModelContext context, IMemoryCache memoryCache, IJwtAuthenticationManager jwtAuthenticationManager)
+        public AccountsController(Sales_ModelContext context, IJwtAuthenticationManager jwtAuthenticationManager)
         {
             _db = context;
-            _cache = memoryCache;
             _jwtAuthenticationManager = jwtAuthenticationManager;
         }
         // GET: api/<AccountsController>
@@ -55,7 +50,6 @@ namespace Sales_Model.Controllers
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        // GET api/<AccountsController>/5
         [HttpGet("{id}")]
         public async Task<ServiceResponse> GetAccount(Guid? id)
         {
@@ -72,6 +66,12 @@ namespace Sales_Model.Controllers
             Dictionary<string, object> result = new Dictionary<string, object>();
             result.Add("account", account);
             result.Add("account_info", account_info);
+            if (Helper.CheckPermission(HttpContext, "Admin"))//Nếu là admin thì trả về role của tk đó
+            {
+                string sql_get_role = $"select * from role where role_id in (select distinct role_id from account_role where account_id = @account_id)";
+                var roles = _db.Roles.FromSqlRaw(sql_get_role, new SqlParameter("@account_id", id)).ToList();
+                result.Add("roles", roles);
+            }
             res.Data = result;
             res.Success = true;
             return res;
@@ -102,6 +102,7 @@ namespace Sales_Model.Controllers
         /// Đăng xuất
         /// </summary>
         /// <returns></returns>
+        [AllowAnonymous]
         [HttpPost("logout")]
         public async Task<ServiceResponse> Logout()
         {
@@ -118,6 +119,7 @@ namespace Sales_Model.Controllers
         /// </summary>
         /// <param name="account"></param>
         /// <returns></returns>
+        [AllowAnonymous]
         [HttpPost]
         public async Task<ServiceResponse> PostAccount(Account account)
         {
@@ -125,7 +127,7 @@ namespace Sales_Model.Controllers
             try
             {
                 account.AccountId = Guid.NewGuid();
-                account.Password = this.EncodeMD5(account.Password);
+                account.Password = Helper.EncodeMD5(account.Password);
                 _db.Accounts.Add(account);
                 res.Success = true;
                 res.Data = account;
@@ -157,7 +159,18 @@ namespace Sales_Model.Controllers
             ServiceResponse res = new ServiceResponse();
             try
             {
-                _db.Entry(account).State = EntityState.Modified;
+                var accountDb = _db.Accounts.SingleOrDefault(_ => _.AccountId == account.AccountId);
+                //Chỉ cập nhật những thông tin được phép thay đổi
+                accountDb.Avatar = account.Avatar;
+                accountDb.Status = account.Status;
+                accountDb.Address = account.Address;
+                accountDb.Dob = account.Dob;
+                accountDb.FirstName = account.FirstName;
+                accountDb.LastName = account.LastName;
+                accountDb.Mobile = account.Mobile;
+                accountDb.EmailBackup = account.EmailBackup;
+                accountDb.DisplayName = account.DisplayName;
+                accountDb.IsInterestedAccount = account.IsInterestedAccount;
                 await _db.SaveChangesAsync();
                 Helper.WriteLogAsync(_db, HttpContext, Message.AccountLogChange);
             }
@@ -171,21 +184,25 @@ namespace Sales_Model.Controllers
             return res;
         }
         /// <summary>
-        /// Sửa account_info
+        /// Thay đổi mật khẩu
         /// </summary>
-        /// <param name="id"></param>
-        /// <param name="accInfo"></param>
+        /// <param name="account"></param>
         /// <returns></returns>
-        [HttpPost("edit_info")]
-        public async Task<ServiceResponse> EditAccountInfo(Guid? id, AccountInfo accInfo)
+        [HttpPost("edit_password")]
+        public async Task<ServiceResponse> EditPasswordAccount(Account account)
         {
             ServiceResponse res = new ServiceResponse();
-            _db.Entry(accInfo).State = EntityState.Modified;
             try
             {
+                Account accountDb = new Account();
+                accountDb = _db.Accounts.SingleOrDefault(_ => _.AccountId == account.AccountId);
+                if (accountDb == null)
+                {
+                    accountDb = _db.Accounts.SingleOrDefault(_ => _.Username == account.Username);
+                }
+                accountDb.Password = Helper.EncodeMD5(account.Password);
                 await _db.SaveChangesAsync();
-                string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-                Helper.WriteLogAsync(_db, HttpContext, "Sửa thông tin tài khoản chi tiết");
+                Helper.WriteLogAsync(_db, HttpContext, Message.AccountLogPassword);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -196,20 +213,13 @@ namespace Sales_Model.Controllers
             }
             return res;
         }
+        
         // DELETE api/<AccountsController>/5
         [HttpDelete("{id}")]
         public async Task<ServiceResponse> DeleteAccount(Guid? id)
         {
             ServiceResponse res = new ServiceResponse();
-            string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-            if (_cache.Get("user_" + ipAddress) == null) //Nếu không có thông tin tài khoản => thông báo đăng nhập lại
-            {
-                res.Success = false;
-                res.Message = Message.AccountLoginAgain;
-                res.ErrorCode = 404;
-                res.Data = Message.AccountNotFound;
-            }
-            else if (!Helper.CheckPermission(HttpContext, "DeleteAccount"))//Check quyền xóa
+            if (!Helper.CheckPermission(HttpContext, "DeleteAccount"))//Check quyền xóa
             {
                 res.Success = false;
                 res.Message = Message.NotAuthorize;
@@ -234,28 +244,6 @@ namespace Sales_Model.Controllers
                 res.Success = true;
             }
             return res;
-        }
-        /// <summary>
-        /// Mã hóa MD5
-        /// </summary>
-        /// <param name="str"></param>
-        /// <returns></returns>
-        private string EncodeMD5(string str)
-        {
-            string result = "";
-            if (str != null)
-            {
-                MD5 md = MD5.Create();
-                byte[] bytePass = Encoding.ASCII.GetBytes(str);
-                byte[] byteResult = md.ComputeHash(bytePass);
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < byteResult.Length; i++)
-                {
-                    sb.Append(byteResult[i].ToString("X2"));
-                }
-                result = sb.ToString();
-            }
-            return result;
         }
     }
 }

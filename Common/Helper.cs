@@ -7,6 +7,8 @@ using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 namespace Sales_Model.Common
 {
@@ -20,6 +22,7 @@ namespace Sales_Model.Common
         /// <param name="ip"></param>
         /// <param name="acction"></param>
         /// <returns></returns>
+        /// @author bttu 11.6.2021
         public static async Task WriteLogAsync(Sales_ModelContext _db,HttpContext httpContext , string acction)
         {
             try
@@ -52,6 +55,7 @@ namespace Sales_Model.Common
         /// <param name="ip"></param>
         /// <param name="acction"></param>
         /// <returns></returns>
+        /// @author bttu 11.6.2021
         public static bool CheckPermission(HttpContext httpContext, string role_code)
         {
             Dictionary<string, object> account_login = JsonConvert.DeserializeObject<Dictionary<string, object>>(httpContext.User.Identity.Name);
@@ -71,6 +75,47 @@ namespace Sales_Model.Common
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// Lấy thông tin tài khoản hiện tại
+        /// </summary>
+        /// <param name="httpContext"></param>
+        /// <returns></returns>
+        /// @author bttu 11.6.2021
+        public static Account GetUserInfo(HttpContext httpContext)
+        {
+            Dictionary<string, object> account_login = JsonConvert.DeserializeObject<Dictionary<string, object>>(httpContext.User.Identity.Name);
+            if (account_login != null && account_login.ContainsKey("account"))
+            {
+                JObject jAccount = account_login["account"] as JObject;
+                Account account = jAccount.ToObject<Account>();
+                return account;
+            }
+            return null;
+        }
+        /// <summary>
+        /// Mã hóa MD5
+        /// </summary>
+        /// <param name="str"></param>
+        /// <returns></returns>
+        /// @author bttu 11.6.2021
+        public static string EncodeMD5(string str)
+        {
+            string result = "";
+            if (str != null)
+            {
+                MD5 md = MD5.Create();
+                byte[] bytePass = Encoding.ASCII.GetBytes(str);
+                byte[] byteResult = md.ComputeHash(bytePass);
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < byteResult.Length; i++)
+                {
+                    sb.Append(byteResult[i].ToString("X2"));
+                }
+                result = sb.ToString();
+            }
+            return result;
         }
     }
 }

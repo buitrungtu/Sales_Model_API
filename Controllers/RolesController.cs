@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Sales_Model.Common;
+using Sales_Model.Constants;
 using Sales_Model.Model;
 using Sales_Model.OutputDirectory;
 using System;
@@ -45,23 +47,27 @@ namespace Sales_Model.Controllers
             res.ErrorCode = 403;
             return res;
         }
-        // GET: api/<RolesController>
+        /// <summary>
+        /// Get roles by account_id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        /// https://localhost:44335/api/roles/roles_account?id=0f76c9fa-509f-4e75-afde-2a79b5c9df56
         [HttpGet("roles_account")]
-        public async Task<ServiceResponse> GetRolesAccount()
+        public async Task<ServiceResponse> GetRolesAccount(Guid? id)
         {
             ServiceResponse res = new ServiceResponse();
-            if (!Helper.CheckPermission(HttpContext, "Admin"))
+            if (!Helper.CheckPermission(HttpContext, "Admin"))//Check quyền admin
             {
                 res.Success = false;
-                res.Message = "Bạn không có quyền này";
-                return res;
-
+                res.Message = Message.NotAuthorize;
+                res.ErrorCode = 403;
+                res.Data = Message.NotAuthorize;
             }
-            string sql_get_role = $"select acc.account_id, username, status, r.role_id, r.role_code, r.name from account acc join account_role accr on acc.account_id = accr.account_id join role r on accr.role_id = r.role_id";
-            res.Data = _db.AccountRoles.FromSqlRaw(sql_get_role).ToList();
-            res.Success = false;
-            res.Message = "Bạn không có quyền này";
-            res.ErrorCode = 403;
+            string sql_get_role = $"select * from role where role_id in (select distinct role_id from account_role where account_id = @account_id)";
+            var roles = _db.Roles.FromSqlRaw(sql_get_role, new SqlParameter("@account_id", id)).ToList();
+            res.Data = roles;
+            res.Success = true;
             return res;
         }
         // PUT api/<RolesController>/5
@@ -84,10 +90,10 @@ namespace Sales_Model.Controllers
                 {
                     switch (item.State)
                     {
-                        case 0:
+                        case (int)RecordStatus.Delete:
                             lstDelete.Add(item);
                             break;
-                        case 2:
+                        case (int)RecordStatus.Add:
                             lstInsert.Add(item);
                             break;
                         default:
