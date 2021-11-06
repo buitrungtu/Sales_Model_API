@@ -107,24 +107,33 @@ namespace Sales_Model.Controllers
                 res.Success = false;
                 res.Data = null;
             }
-            Dictionary<string, object> result = new Dictionary<string, object>();
-            result.Add("product", product);
-            //Lấy product review
-            var product_review = _db.ProductReviews.Where(_ => _.ProductId == product.ProductId);
-            result.Add("product_review", product_review);
-            //Lấy product meta
-            var product_meta = _db.ProductMeta.Where(_ => _.ProductId == product.ProductId);
-            result.Add("product_meta", product_meta);
-            //Lấy category của product
-            string sql_get_category = $"select * from category where category_id in (select category_id from product_category where product_id = '{product.ProductId}')";
-            var categories = _db.Categories.FromSqlRaw(sql_get_category).ToList();
-            result.Add("categories", categories);
-            ////Lấy category của product
-            string sql_get_tag = $"select * from tag where tag_id in (select tag_id from product_tag where product_id = '{product.ProductId}')";
-            var tags = _db.Tags.FromSqlRaw(sql_get_tag).ToList();
-            result.Add("tags", tags);
-            res.Data = result;
-            res.Success = true;
+            try
+            {
+                Dictionary<string, object> result = new Dictionary<string, object>();
+                result.Add("product", product);
+                //Lấy product review
+                var product_review = _db.ProductReviews.Where(_ => _.ProductId == product.ProductId);
+                result.Add("product_review", product_review);
+                //Lấy product meta
+                var product_meta = _db.ProductMeta.Where(_ => _.ProductId == product.ProductId);
+                result.Add("product_meta", product_meta);
+                //Lấy category của product
+                string sql_get_category = $"select * from category where category_id in (select category_id from product_category where product_id = '{product.ProductId}')";
+                var categories = _db.Categories.FromSqlRaw(sql_get_category).ToList();
+                result.Add("categories", categories);
+                ////Lấy category của product
+                string sql_get_tag = $"select * from tag where tag_id in (select tag_id from product_tag where product_id = '{product.ProductId}')";
+                var tags = _db.Tags.FromSqlRaw(sql_get_tag).ToList();
+                result.Add("tags", tags);
+                res.Data = result;
+                res.Success = true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                res.Success = false;
+                res.Message = Message.ErrorMsg;
+                res.ErrorCode = 500;
+            }
             return res;
         }
         
@@ -141,7 +150,8 @@ namespace Sales_Model.Controllers
             try
             {
                 product.ProductId = Guid.NewGuid();
-                product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title) + DateTime.Now.ToFileTime().ToString();
+                product.Title = product.Title.Trim();
+                product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title.Trim()) + DateTime.Now.ToFileTime().ToString();
                 _db.Products.Add(product);
                 if(product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
@@ -219,7 +229,8 @@ namespace Sales_Model.Controllers
             try
             {
                 _db.Entry(product).State = EntityState.Modified;
-                product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title) + DateTime.Now.ToFileTime().ToString();
+                product.Title = product.Title.Trim();
+                product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title.Trim()) + DateTime.Now.ToFileTime().ToString();
                 //Xử lý các bảng liên quan
                 if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
