@@ -28,17 +28,39 @@ namespace Sales_Model.Controllers
             _db = context;
             _jwtAuthenticationManager = jwtAuthenticationManager;
         }
-        // GET: api/<AccountsController>
+        /// <summary>
+        /// Lấy danh sách tài khoản có phân trang và cho phép tìm kiếm
+        /// </summary>
+        /// <returns></returns>
+        /// https://localhost:44335/api/accounts?page=2&record=10&search=admin
         [HttpGet]
-        public async Task<ServiceResponse> GetAccounts()
+        public async Task<ServiceResponse> GetAccountsByPagingAndSearch([FromQuery] int page, [FromQuery] int record, [FromQuery] string search)
         {
             ServiceResponse res = new ServiceResponse();
             if (Helper.CheckPermission(HttpContext, "Admin"))
             {
+                var pagingData = new PagingData();
+                List<Account> records = new List<Account>();
+                //Tổng số bản ghi
+                if (search != null && search.Trim() != "")
+                {
+                    //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
+                    string sql_get_account = "select * from account where CHARINDEX(@txtSeach, username) > 0 or CHARINDEX(@txtSeach, first_name) > 0" +
+                                                                        "or CHARINDEX(@txtSeach, last_name) > 0 or CHARINDEX(@txtSeach, display_name) > 0" +
+                                                                        "or CHARINDEX(@txtSeach, address) > 0 or CHARINDEX(@txtSeach, mobile) > 0";
+                    var param = new SqlParameter("@txtSeach", search);
+                    records = _db.Accounts.FromSqlRaw(sql_get_account, param).OrderByDescending(x => x.CreateDate).ToList();
+                }
+                else
+                {
+                    records = await _db.Accounts.OrderByDescending(x => x.CreateDate).ToListAsync();
+                }
+                pagingData.TotalRecord = records.Count(); //Tổng số bản ghi
+                pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record)); //Tổng số trang
+                pagingData.Data = records.Skip((page - 1) * record).Take(record).ToList(); //Dữ liệu của từng trang
                 res.Success = true;
-                res.Data = await _db.Accounts.ToListAsync();
+                res.Data = pagingData;
                 return res;
-
             }
             res.Success = false;
             res.Message = Message.NotAuthorize;
@@ -160,17 +182,17 @@ namespace Sales_Model.Controllers
             try
             {
                 var accountDb = _db.Accounts.SingleOrDefault(_ => _.AccountId == account.AccountId);
-                //Chỉ cập nhật những thông tin được phép thay đổi
-                accountDb.Avatar = account.Avatar;
-                accountDb.Status = account.Status;
-                accountDb.Address = account.Address;
-                accountDb.Dob = account.Dob;
-                accountDb.FirstName = account.FirstName;
-                accountDb.LastName = account.LastName;
-                accountDb.Mobile = account.Mobile;
-                accountDb.EmailBackup = account.EmailBackup;
-                accountDb.DisplayName = account.DisplayName;
-                accountDb.IsInterestedAccount = account.IsInterestedAccount;
+                //Chỉ cập nhật những thông tin được phép thay đổi 
+                accountDb.Avatar = account.Avatar != null ? account.Avatar : accountDb.Avatar;
+                accountDb.Status = account.Status != null ? account.Status : accountDb.Status;
+                accountDb.Address = account.Address != null ? account.Address : accountDb.Address;
+                accountDb.Dob = account.Dob != null ? account.Dob : accountDb.Dob;
+                accountDb.FirstName = account.FirstName != null ? account.FirstName : accountDb.FirstName;
+                accountDb.LastName = account.LastName != null ? account.LastName : accountDb.LastName;
+                accountDb.Mobile = account.Mobile != null ? account.Mobile : accountDb.Mobile;
+                accountDb.EmailBackup = account.EmailBackup != null ? account.EmailBackup : accountDb.EmailBackup;
+                accountDb.DisplayName = account.DisplayName != null ? account.DisplayName : accountDb.DisplayName;
+                accountDb.IsInterestedAccount = account.IsInterestedAccount != null ? account.IsInterestedAccount : accountDb.IsInterestedAccount;
                 await _db.SaveChangesAsync();
                 Helper.WriteLogAsync(_db, HttpContext, Message.AccountLogChange);
             }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Sales_Model.Common;
@@ -35,14 +36,27 @@ namespace Sales_Model.Controllers
         /// <param name="page">trang</param>
         /// <param name="record">số bản ghi trên 1 trang</param>
         /// <returns></returns>
-        /// https://localhost:44335/api/products?page=2&&record=10
+        /// https://localhost:44335/api/products?page=2&record=10&search=mô+hình
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<PagingData>> GetSuppliersByPage([FromQuery] int page, [FromQuery] int record)
+        public async Task<ActionResult<PagingData>> GetSuppliersByPage([FromQuery] int page, [FromQuery] int record, [FromQuery] string search)
         {
             var pagingData = new PagingData();
+            List<Product> records = new List<Product>();
             //Tổng số bản ghi
-            var records = await _db.Products.OrderByDescending(x => x.CreateDate).ToListAsync();
+            if (search != null && search.Trim() != "")
+            {
+                //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
+                string sql_get_product = "select * from product where CHARINDEX(@txtSeach, product_code) > 0 or CHARINDEX(@txtSeach, title) > 0" +
+                                                                    "or CHARINDEX(@txtSeach, metaTitle) > 0 or CHARINDEX(@txtSeach, slug) > 0" +
+                                                                    "or CHARINDEX(@txtSeach, sku) > 0 or CHARINDEX(@txtSeach, content) > 0";
+                var param = new SqlParameter("@txtSeach", search);
+                records = _db.Products.FromSqlRaw(sql_get_product, param).OrderByDescending(x => x.CreateDate).ToList();
+            }
+            else
+            {
+                records = await _db.Products.OrderByDescending(x => x.CreateDate).ToListAsync();
+            }
             pagingData.TotalRecord = records.Count();
             //Tổng số trang
             pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record));
@@ -50,7 +64,7 @@ namespace Sales_Model.Controllers
             pagingData.Data = records.Skip((page - 1) * record).Take(record).ToList();
             return pagingData;
         }
-
+        
         /// <summary>
         /// Lấy thông tin chi tiết product theo id
         /// </summary>
@@ -79,13 +93,14 @@ namespace Sales_Model.Controllers
             //Lấy product meta
             var product_meta = _db.ProductMeta.Where(_ => _.ProductId == product.ProductId);
             result.Add("product_meta", product_meta);
+            var param = new SqlParameter("@product_id", product.ProductId);
             //Lấy category của product
-            string sql_get_category = $"select * from category where category_id in (select category_id from product_category where product_id = '{product.ProductId}')";
-            var categories = _db.Categories.FromSqlRaw(sql_get_category).ToList();
+            string sql_get_category = $"select * from category where category_id in (select category_id from product_category where product_id = @product_id)";
+            var categories = _db.Categories.FromSqlRaw(sql_get_category, param).ToList();
             result.Add("categories", categories);
             ////Lấy category của product
-            string sql_get_tag = $"select * from tag where tag_id in (select tag_id from product_tag where product_id = '{product.ProductId}')";
-            var tags = _db.Tags.FromSqlRaw(sql_get_tag).ToList();
+            string sql_get_tag = $"select * from tag where tag_id in (select tag_id from product_tag where product_id = @product_id)";
+            var tags = _db.Tags.FromSqlRaw(sql_get_tag, param).ToList();
             result.Add("tags", tags);
             res.Data = result;
             res.Success = true;
@@ -121,13 +136,14 @@ namespace Sales_Model.Controllers
                 //Lấy product meta
                 var product_meta = _db.ProductMeta.Where(_ => _.ProductId == product.ProductId);
                 result.Add("product_meta", product_meta);
+                var param = new SqlParameter("@product_id", product.ProductId);
                 //Lấy category của product
-                string sql_get_category = $"select * from category where category_id in (select category_id from product_category where product_id = '{product.ProductId}')";
-                var categories = _db.Categories.FromSqlRaw(sql_get_category).ToList();
+                string sql_get_category = $"select * from category where category_id in (select category_id from product_category where product_id = @product_id)";
+                var categories = _db.Categories.FromSqlRaw(sql_get_category, param).ToList();
                 result.Add("categories", categories);
-                ////Lấy category của product
-                string sql_get_tag = $"select * from tag where tag_id in (select tag_id from product_tag where product_id = '{product.ProductId}')";
-                var tags = _db.Tags.FromSqlRaw(sql_get_tag).ToList();
+                //Lấy tag của product
+                string sql_get_tag = $"select * from tag where tag_id in (select tag_id from product_tag where product_id = @product_id)";
+                var tags = _db.Tags.FromSqlRaw(sql_get_tag, param).ToList();
                 result.Add("tags", tags);
                 res.Data = result;
                 res.Success = true;
@@ -250,18 +266,18 @@ namespace Sales_Model.Controllers
             {
                 //Chỉ cập nhật những thông tin được phép thay đổi
                 Product productDb = _db.Products.SingleOrDefault(_ => _.ProductId == product.ProductId);
-                productDb.ProductCode = product.ProductCode;
-                productDb.Title = product.Title.Trim(); ;
-                productDb.MetaTitle = product.MetaTitle;
-                productDb.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title.Trim()) + DateTime.Now.ToFileTime().ToString(); ;
-                productDb.Summary = product.Summary;
-                productDb.Type = product.Type;
-                productDb.Sku = product.Sku;
-                productDb.Price = product.Price;
-                productDb.Discount = product.Discount;
-                productDb.Quantity = product.Quantity;
-                productDb.Shop = product.Shop;
-                productDb.Content = product.Content;
+                productDb.ProductCode = product.ProductCode != null ? product.ProductCode : productDb.ProductCode;
+                productDb.Title = product.Title?.Trim();
+                productDb.MetaTitle = product.MetaTitle != null ? product.MetaTitle : productDb.MetaTitle;
+                productDb.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title?.Trim()) + DateTime.Now.ToFileTime().ToString(); ;
+                productDb.Summary = product.Summary != null ? product.Summary : productDb.Summary;
+                productDb.Type = product.Type != null ? product.Type : productDb.Type;
+                productDb.Sku = product.Sku != null ? product.Sku : productDb.Sku;
+                productDb.Price = product.Price != null ? product.Price : productDb.Price;
+                productDb.Discount = product.Discount != null ? product.Discount : productDb.Discount;
+                productDb.Quantity = product.Quantity != null ? product.Quantity : productDb.Quantity;
+                productDb.Shop = product.Shop != null ? product.Shop : productDb.Shop;
+                productDb.Content = product.Content != null ? product.Content : productDb.Content;
                 //Xử lý các bảng liên quan
                 if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
@@ -361,7 +377,7 @@ namespace Sales_Model.Controllers
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
-        /// https://localhost:44335/api/products
+        /// https://localhost:44335/api/products/7e8dbefb-74e6-46c5-9386-302008af7fb3
         [HttpDelete("{id}")]
         public async Task<ServiceResponse> DeleteAccount(Guid? id)
         {
