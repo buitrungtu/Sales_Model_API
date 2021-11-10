@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -243,13 +244,14 @@ namespace Sales_Model.Controllers
             }
             return res;
         }
-        
+
         /// <summary>
         /// Sửa thông tin product
         /// </summary>
         /// <param name="product"></param>
         /// <returns></returns>
         /// https://localhost:44335/api/products/edit
+        [DisableCors]
         [HttpPost("edit")]
         public async Task<ServiceResponse> PutAccount(Product product)
         {
@@ -278,6 +280,7 @@ namespace Sales_Model.Controllers
                 productDb.Quantity = product.Quantity != null ? product.Quantity : productDb.Quantity;
                 productDb.Shop = product.Shop != null ? product.Shop : productDb.Shop;
                 productDb.Content = product.Content != null ? product.Content : productDb.Content;
+                productDb.ProductImage = product.ProductImage != null ? product.ProductImage : productDb.ProductImage;
                 //Xử lý các bảng liên quan
                 if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
