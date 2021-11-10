@@ -362,6 +362,10 @@ namespace Sales_Model.OutputDirectory
                     .HasColumnType("datetime")
                     .HasColumnName("update_date")
                     .HasDefaultValueSql("(getdate())");
+
+                entity.Property(e => e.CustomerName).HasColumnName("CustomerName");
+                entity.Property(e => e.CustomerPhone).HasColumnName("CustomerPhone");
+                entity.Property(e => e.CustomerAddress).HasColumnName("CustomerAddress");
             });
 
             modelBuilder.Entity<OrdersItem>(entity =>
@@ -469,6 +473,10 @@ namespace Sales_Model.OutputDirectory
                     .HasColumnType("datetime")
                     .HasColumnName("update_date")
                     .HasDefaultValueSql("(getdate())");
+
+                entity.Property(e => e.ProductImage)
+                    .HasMaxLength(500)
+                    .HasColumnName("ProductImage");
             });
 
             modelBuilder.Entity<ProductCategory>(entity =>

@@ -23,5 +23,8 @@ namespace Sales_Model.OutputDirectory
         public string Content { get; set; }
         public DateTime? CreateDate { get; set; }
         public DateTime? UpdateDate { get; set; }
+        public string CustomerName { get; set; }
+        public string CustomerPhone { get; set; }
+        public string CustomerAddress { get; set; }
     }
 }

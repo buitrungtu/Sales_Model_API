@@ -88,6 +88,7 @@ namespace Sales_Model.Controllers
                 var lstInsert = new List<AccountRole>();
                 foreach (var item in lstAccountRole)
                 {
+                    if (item.State == null) item.State = 0;
                     switch (item.State)
                     {
                         case (int)RecordStatus.Delete:

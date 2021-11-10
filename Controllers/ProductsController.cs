@@ -285,6 +285,7 @@ namespace Sales_Model.Controllers
                     var lstInsert = new List<ProductCategory>();
                     foreach (var item in product.ProductCategories)
                     {
+                        if (item.State == null) item.State = 0;
                         switch (item.State)
                         {
                             case (int)RecordStatus.Delete:
@@ -312,6 +313,7 @@ namespace Sales_Model.Controllers
                     var lstInsert = new List<ProductTag>();
                     foreach (var item in product.ProductTags)
                     {
+                        if (item.State == null) item.State = 0;
                         switch (item.State)
                         {
                             case (int)RecordStatus.Delete:
@@ -339,6 +341,7 @@ namespace Sales_Model.Controllers
                     var lstInsert = new List<ProductMetum>();
                     foreach (var item in product.ProductMetas)
                     {
+                        if (item.State == null) item.State = 0;
                         switch (item.State)
                         {
                             case (int)RecordStatus.Delete:

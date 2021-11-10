@@ -27,6 +27,7 @@ namespace Sales_Model.OutputDirectory
         public DateTime? PublishedDate { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
+        public string ProductImage { get; set; }
 
         [NotMapped]
         public List<ProductCategory> ProductCategories { get; set; }
