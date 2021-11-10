@@ -12,9 +12,9 @@ namespace Sales_Model.Constants
         public const string ProductNotExist = "Sản phẩm này không tồn tại";
         public const string ProductNotFound = "Không tìm thấy sản phẩm này";
         public const string NotAuthorize = "Bạn không có quyền này";
-        public const string AccountNotFound= "Không tìm thấy tài khoản này";
-        public const string AccountLoginAgain= "Bạn vui lòng đăng nhập lại để thực hiện chức năng này";
-        public const string AccountLogoutSuccess= "Đăng xuất thành công";
+        public const string AccountNotFound = "Không tìm thấy tài khoản này";
+        public const string AccountLoginAgain = "Bạn vui lòng đăng nhập lại để thực hiện chức năng này";
+        public const string AccountLogoutSuccess = "Đăng xuất thành công";
 
 
         public const string AccountLogLogin = "Login";
@@ -28,5 +28,9 @@ namespace Sales_Model.Constants
         public const string ProductLogDelete = "Xóa sản phẩm";
         public const string ProductLogAdd = "Thêm mới sản phẩm";
 
+        //Xử lý message order
+        public const string OrderLogChange = "Thay đổi thông tin đơn hàng";
+        //public const string ProductLogDelete = "Xóa sản phẩm";
+        public const string OrderLogAdd = "Đơn hàng mới được tạo";
     }
 }
