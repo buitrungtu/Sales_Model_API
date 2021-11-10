@@ -40,13 +40,7 @@ namespace Sales_Model
             services.AddDbContext<Sales_ModelContext>(options =>
             options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")), ServiceLifetime.Scoped);
             services.AddMemoryCache();
-            services.AddCors(options =>
-            {
-                options.AddPolicy("CorsPolicy",
-                    builder => builder.AllowAnyOrigin()
-                        .AllowAnyMethod()
-                        .AllowAnyHeader());
-            });
+            services.AddCors();
             var key = "This is my test key";
             services.AddAuthentication(x =>
             {
@@ -74,8 +68,12 @@ namespace Sales_Model
             {
                 app.UseDeveloperExceptionPage();
             }
-            // Enable Cors
-            app.UseCors("CorsPolicy");
+            // global cors policy
+            app.UseCors(x => x
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .SetIsOriginAllowed(origin => true) // allow any origin
+                .AllowCredentials()); // allow credentials
 
             app.UseHttpsRedirection();
 
