@@ -14,6 +14,8 @@ namespace Sales_Model.Common
 {
     public class Helper
     {
+        private static readonly Sales_ModelContext _db = new Sales_ModelContext();
+        private IMemoryCache _cache;
         /// <summary>
         /// Ghi log vào db
         /// </summary>
@@ -23,7 +25,7 @@ namespace Sales_Model.Common
         /// <param name="acction"></param>
         /// <returns></returns>
         /// @author bttu 11.6.2021
-        public static async Task WriteLogAsync(Sales_ModelContext _db,HttpContext httpContext , string acction)
+        public static async Task WriteLogAsync(HttpContext httpContext , string acction)
         {
             try
             {
@@ -37,7 +39,7 @@ namespace Sales_Model.Common
                     auditinglog.Action = acction;
                     auditinglog.Username = account.Username;
                     auditinglog.Ip = httpContext.Connection.RemoteIpAddress?.ToString();
-                    _db.Auditinglogs.Add(auditinglog);
+                    await _db.Auditinglogs.AddAsync(auditinglog);
                     await _db.SaveChangesAsync();
                 }
             }

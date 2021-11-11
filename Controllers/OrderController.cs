@@ -39,16 +39,16 @@ namespace Sales_Model.Controllers
         /// https://localhost:44335/api/order?page=2&record=10&search=mô+hình
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<PagingData>> GetOrderList([FromQuery] int page, [FromQuery] int record, [FromQuery] string search)
+        public async Task<ActionResult<PagingData>> GetOrderList([FromQuery] string s, [FromQuery] int? page = 0, [FromQuery] int? record = 10)
         {
             var pagingData = new PagingData();
             List<Order> records = new List<Order>();
             //Tổng số bản ghi
             pagingData.TotalRecord = records.Count();
             //Tổng số trang
-            pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record));
+            pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value));
             //Dữ liệu của từng trang
-            pagingData.Data = records.Skip((page - 1) * record).Take(record).ToList();
+            pagingData.Data = records.Skip(page.Value * record.Value).Take(record.Value).ToList();
             return pagingData;
         }
 
@@ -64,29 +64,29 @@ namespace Sales_Model.Controllers
         {
             ServiceResponse res = new ServiceResponse();
             var userInfo = _cache.Get("account_info");
-            var product = await _db.Orders.FindAsync(id);
-            if (product == null)
+            var order = await _db.Orders.FindAsync(id);
+            if (order == null)
             {
-                res.Message = Message.ProductNotFound;
+                res.Message = Message.OrderNotFound;
                 res.ErrorCode = 404;
                 res.Success = false;
                 res.Data = null;
             }
             Dictionary<string, object> result = new Dictionary<string, object>();
-            result.Add("product", product);
+            result.Add("order", order);
             res.Data = result;
             res.Success = true;
             return res;
         }
 
         /// <summary>
-        /// Thêm product
+        /// Thêm order
         /// </summary>
-        /// <param name="product"></param>
+        /// <param name="order"></param>
         /// <returns></returns>
-        /// https://localhost:44335/api/products
+        /// https://localhost:44335/api/order
         [HttpPost]
-        public async Task<ServiceResponse> PostProduct(Order order)
+        public async Task<ServiceResponse> AddOrder(Order order)
         {
             ServiceResponse res = new ServiceResponse();
             try
@@ -94,12 +94,15 @@ namespace Sales_Model.Controllers
                 order.OrdersId = Guid.NewGuid();
                 order.SessionId = "";
                 order.Token = "";
+                order.CustomerName = order.CustomerName.Trim();
+                order.CustomerPhone = order.CustomerPhone.Trim();
+                order.CustomerAddress = order.CustomerAddress.Trim();
                 order.Status = OrderStatus.Processing;
                 order.CreateDate = DateTime.Now;
                 order.UpdateDate = DateTime.Now;
-                //_db.Orders.Add(order);
-                //await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(_db, HttpContext, Message.OrderLogAdd);
+                _db.Orders.Add(order);
+                await _db.SaveChangesAsync();
+                Helper.WriteLogAsync(HttpContext, Message.OrderLogAdd);
                 res.Success = true;
                 res.Data = _db.Orders.Where(_ => _.OrdersId == order.OrdersId).FirstOrDefault();
             }

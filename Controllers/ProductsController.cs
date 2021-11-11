@@ -39,7 +39,7 @@ namespace Sales_Model.Controllers
         /// https://localhost:44335/api/products?page=2&record=10&search=mô+hình
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<PagingData>> GetSuppliersByPage([FromQuery] int page, [FromQuery] int record, [FromQuery] string search)
+        public async Task<ActionResult<PagingData>> GetSuppliersByPage([FromQuery] string search, [FromQuery] int? page = 0, [FromQuery] int? record = 20)
         {
             var pagingData = new PagingData();
             List<Product> records = new List<Product>();
@@ -58,10 +58,10 @@ namespace Sales_Model.Controllers
                 records = await _db.Products.OrderByDescending(x => x.CreateDate).ToListAsync();
             }
             pagingData.TotalRecord = records.Count();
-            //Tổng số trang
-            pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record));
+            //Tổng số trangalue
+            pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value));
             //Dữ liệu của từng trang
-            pagingData.Data = records.Skip((page - 1) * record).Take(record).ToList();
+            pagingData.Data = records.Skip(page.Value * record.Value).Take(record.Value).ToList();
             return pagingData;
         }
         
@@ -118,7 +118,7 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> GetProductBySlug(string slug)
         {
             ServiceResponse res = new ServiceResponse();
-            var product = await _db.Products.Where(p => p.Slug.Equals(slug)).FirstOrDefaultAsync();
+            var product = await _db.Products.Where(p => p.Slug.Equals(slug.Trim())).FirstOrDefaultAsync();
             if (product == null)
             {
                 res.Message = Message.ProductNotFound;
@@ -179,8 +179,8 @@ namespace Sales_Model.Controllers
             {
                 product.ProductId = Guid.NewGuid();
                 product.Title = product.Title.Trim();
+                product.ProductImage = product.ProductImage.Trim();
                 product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title.Trim()) + DateTime.Now.ToFileTime().ToString();
-                _db.Products.Add(product);
                 if(product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
                     foreach (var item in product.ProductCategories)
@@ -205,8 +205,10 @@ namespace Sales_Model.Controllers
                     }
                     _db.ProductTags.AddRange(product.ProductTags);
                 }
+
+                await _db.Products.AddAsync(product);
                 await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(_db, HttpContext, Message.ProductLogAdd);
+                Helper.WriteLogAsync(HttpContext, Message.ProductLogAdd);
                 res.Success = true;
                 res.Data = _db.Products.Where(_ => _.ProductCode == product.ProductCode).FirstOrDefault();
             }
@@ -262,23 +264,29 @@ namespace Sales_Model.Controllers
                 res.Data = Message.NotAuthorize;
                 return res;
             }
+            Product productDb = await _db.Products.FindAsync(product.ProductId);
+            if (productDb == null)
+            {
+                res.Message = Message.ProductNotFound;
+                res.ErrorCode = 404;
+                res.Success = false;
+            }
             try
             {
                 //Chỉ cập nhật những thông tin được phép thay đổi
-                Product productDb = _db.Products.SingleOrDefault(_ => _.ProductId == product.ProductId);
                 productDb.ProductCode = product.ProductCode != null ? product.ProductCode : productDb.ProductCode;
                 productDb.Title = product.Title?.Trim();
-                productDb.MetaTitle = product.MetaTitle != null ? product.MetaTitle : productDb.MetaTitle;
+                productDb.MetaTitle = product.MetaTitle != null ? product.MetaTitle.Trim() : productDb.MetaTitle;
                 productDb.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title?.Trim()) + DateTime.Now.ToFileTime().ToString(); ;
-                productDb.Summary = product.Summary != null ? product.Summary : productDb.Summary;
+                productDb.Summary = product.Summary != null ? product.Summary.Trim() : productDb.Summary;
                 productDb.Type = product.Type != null ? product.Type : productDb.Type;
-                productDb.Sku = product.Sku != null ? product.Sku : productDb.Sku;
+                productDb.Sku = product.Sku != null ? product.Sku.Trim() : productDb.Sku;
                 productDb.Price = product.Price != null ? product.Price : productDb.Price;
                 productDb.Discount = product.Discount != null ? product.Discount : productDb.Discount;
                 productDb.Quantity = product.Quantity != null ? product.Quantity : productDb.Quantity;
                 productDb.Shop = product.Shop != null ? product.Shop : productDb.Shop;
-                productDb.Content = product.Content != null ? product.Content : productDb.Content;
-                productDb.ProductImage = product.ProductImage != null ? product.ProductImage : productDb.ProductImage;
+                productDb.Content = product.Content != null ? product.Content.Trim() : productDb.Content;
+                productDb.ProductImage = product.ProductImage != null ? product.ProductImage.Trim() : productDb.ProductImage;
                 //Xử lý các bảng liên quan
                 if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
@@ -365,7 +373,7 @@ namespace Sales_Model.Controllers
                     }
                 }
                 await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(_db, HttpContext, Message.ProductLogChange);
+                Helper.WriteLogAsync(HttpContext, Message.ProductLogChange);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -376,6 +384,7 @@ namespace Sales_Model.Controllers
             }
             return res;
         }
+
         /// <summary>
         /// Xóa 1 product
         /// </summary>
@@ -413,7 +422,7 @@ namespace Sales_Model.Controllers
                 var lstProductTags = _db.ProductTags.Where(_ => _.ProductId == product.ProductId);
                 _db.ProductTags.RemoveRange(lstProductTags);
                 await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(_db, HttpContext, Message.ProductLogDelete);
+                Helper.WriteLogAsync(HttpContext, Message.ProductLogDelete);
                 res.Data = product;
             }
             catch

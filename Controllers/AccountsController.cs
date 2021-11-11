@@ -34,7 +34,7 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         /// https://localhost:44335/api/accounts?page=2&record=10&search=admin
         [HttpGet]
-        public async Task<ServiceResponse> GetAccountsByPagingAndSearch([FromQuery] int page, [FromQuery] int record, [FromQuery] string search)
+        public async Task<ServiceResponse> GetAccountsByPagingAndSearch([FromQuery] string search, [FromQuery] int? page = 0, [FromQuery] int? record = 10)
         {
             ServiceResponse res = new ServiceResponse();
             if (Helper.CheckPermission(HttpContext, "Admin"))
@@ -56,8 +56,8 @@ namespace Sales_Model.Controllers
                     records = await _db.Accounts.OrderByDescending(x => x.CreateDate).ToListAsync();
                 }
                 pagingData.TotalRecord = records.Count(); //Tổng số bản ghi
-                pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record)); //Tổng số trang
-                pagingData.Data = records.Skip((page - 1) * record).Take(record).ToList(); //Dữ liệu của từng trang
+                pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value)); //Tổng số trang
+                pagingData.Data = records.Skip(page.Value * record.Value).Take(record.Value).ToList(); //Dữ liệu của từng trang
                 res.Success = true;
                 res.Data = pagingData;
                 return res;
@@ -132,7 +132,7 @@ namespace Sales_Model.Controllers
             res.Success = true;
             res.Message = Message.AccountLogoutSuccess;
             //Ghi log để làm nhật ký truy cập
-            Helper.WriteLogAsync(_db, HttpContext, Message.AccountLogLogout);
+            Helper.WriteLogAsync(HttpContext, Message.AccountLogLogout);
             return res;
         }
 
@@ -194,7 +194,7 @@ namespace Sales_Model.Controllers
                 accountDb.DisplayName = account.DisplayName != null ? account.DisplayName : accountDb.DisplayName;
                 accountDb.IsInterestedAccount = account.IsInterestedAccount != null ? account.IsInterestedAccount : accountDb.IsInterestedAccount;
                 await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(_db, HttpContext, Message.AccountLogChange);
+                Helper.WriteLogAsync(HttpContext, Message.AccountLogChange);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -224,7 +224,7 @@ namespace Sales_Model.Controllers
                 }
                 accountDb.Password = Helper.EncodeMD5(account.Password);
                 await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(_db, HttpContext, Message.AccountLogPassword);
+                Helper.WriteLogAsync(HttpContext, Message.AccountLogPassword);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -261,7 +261,7 @@ namespace Sales_Model.Controllers
                 _db.Accounts.Remove(account);
                 _db.AccountInfos.Remove(accInfo);
                 await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(_db, HttpContext, Message.AccountLogDelete);
+                Helper.WriteLogAsync(HttpContext, Message.AccountLogDelete);
                 res.Data = account;
                 res.Success = true;
             }

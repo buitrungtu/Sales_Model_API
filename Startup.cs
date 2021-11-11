@@ -81,6 +81,7 @@ namespace Sales_Model
             
             // global cors policy
             app.UseCors("CorsPolicy");
+            //app.UseMvc();
             
             app.UseAuthentication();
             app.UseAuthorization();
