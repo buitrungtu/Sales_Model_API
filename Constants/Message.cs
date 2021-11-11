@@ -25,6 +25,7 @@ namespace Sales_Model.Constants
         public const string ProductLogAdd = "Thêm mới sản phẩm";
         public const string ProductNotExist = "Sản phẩm này không tồn tại";
         public const string ProductNotFound = "Không tìm thấy sản phẩm này";
+        public const string ProductPriceNotFound = "Không tìm thấy giá sản phẩm này";
 
         //Xử lý message order
         public const string OrderLogChange = "Thay đổi thông tin đơn hàng";
@@ -32,5 +33,8 @@ namespace Sales_Model.Constants
         public const string OrderLogAdd = "Đơn hàng mới được tạo";
         public const string OrderNotExist = "Đơn hàng này không tồn tại";
         public const string OrderNotFound = "Không tìm thấy đơn hàng này";
+        public const string OrderItemAdd = "Thêm vào giỏ hàng thành công";
+        public const string QuantityInvalid = "Số lượng không hợp lệ";
+        public const string QuantityNotEnough = "Số lượng sản phẩm không đủ";
     }
 }

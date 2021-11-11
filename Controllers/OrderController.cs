@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Sales_Model.Common;
 using Sales_Model.Constants;
 using Sales_Model.Model;
+using Sales_Model.Model.ModelCustom;
 using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
@@ -43,6 +44,7 @@ namespace Sales_Model.Controllers
         {
             var pagingData = new PagingData();
             List<Order> records = new List<Order>();
+            records = await _db.Orders.ToListAsync();
             //Tổng số bản ghi
             pagingData.TotalRecord = records.Count();
             //Tổng số trang
@@ -65,6 +67,7 @@ namespace Sales_Model.Controllers
             ServiceResponse res = new ServiceResponse();
             var userInfo = _cache.Get("account_info");
             var order = await _db.Orders.FindAsync(id);
+
             if (order == null)
             {
                 res.Message = Message.OrderNotFound;
@@ -72,8 +75,9 @@ namespace Sales_Model.Controllers
                 res.Success = false;
                 res.Data = null;
             }
+            var orderItem = await _db.OrdersItems.Where(_ => _.OrderId == order.OrdersId).ToListAsync();
             Dictionary<string, object> result = new Dictionary<string, object>();
-            result.Add("order", order);
+            result.Add("order " + order.OrdersId, orderItem);
             res.Data = result;
             res.Success = true;
             return res;
@@ -86,25 +90,91 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         /// https://localhost:44335/api/order
         [HttpPost]
-        public async Task<ServiceResponse> AddOrder(Order order)
+        public async Task<ServiceResponse> AddOrder(OrderInfoRequest requests)
         {
             ServiceResponse res = new ServiceResponse();
             try
             {
+                Order order = new Order();
                 order.OrdersId = Guid.NewGuid();
                 order.SessionId = "";
                 order.Token = "";
-                order.CustomerName = order.CustomerName.Trim();
-                order.CustomerPhone = order.CustomerPhone.Trim();
-                order.CustomerAddress = order.CustomerAddress.Trim();
+                order.CustomerName = requests.customerName.Trim();
+                order.CustomerPhone = requests.customerPhone.Trim();
+                order.CustomerAddress = requests.customerAddress.Trim();
                 order.Status = OrderStatus.Processing;
                 order.CreateDate = DateTime.Now;
                 order.UpdateDate = DateTime.Now;
                 _db.Orders.Add(order);
+
+                var orderItemList = new List<object>();
+                double total = 0;
+
+                foreach (var oi in requests.items)
+                {
+                    Product p = await _db.Products.FindAsync(oi.productId);
+                    if (p == null)
+                    {
+                        res.Message = Message.ProductNotFound;
+                        res.ErrorCode = 404;
+                        res.Success = false;
+                        res.Data = null;
+                        return res;
+                    }
+
+                    int productExisted = (int)p.Quantity;
+                    if(productExisted < oi.quantity)
+                    {
+                        res.Message = Message.QuantityNotEnough;
+                        res.ErrorCode = 404;
+                        res.Success = false;
+                        res.Data = null;
+                        return res;
+                    }
+
+                    if (p.Price == null)
+                    {
+                        res.Message = Message.ProductPriceNotFound;
+                        res.ErrorCode = 404;
+                        res.Success = false;
+                        res.Data = null;
+                        return res;
+                    }
+
+                    if(oi.quantity <= 0)
+                    {
+                        res.Message = Message.QuantityInvalid;
+                        res.ErrorCode = 404;
+                        res.Success = false;
+                        res.Data = null;
+                        return res;
+                    }
+
+                    OrdersItem orderItem = new OrdersItem();
+                    orderItem.Id = Guid.NewGuid();
+                    orderItem.OrderId = order.OrdersId;
+                    orderItem.ProductId = p.ProductId;
+                    orderItem.Price = (double)(p.Discount != null ? (p.Price - p.Discount) * oi.quantity : p.Price * oi.quantity);
+                    orderItem.CreateDate = DateTime.Now;
+                    orderItem.UpdateDate = DateTime.Now;
+                    _db.OrdersItems.Add(orderItem);
+
+                    total += (double)(p.Discount != null ? (p.Price - p.Discount) * oi.quantity : p.Price * oi.quantity);
+                    order.Total = total;
+
+                    //orderItemList.Add(oi);
+                }
+
+                orderItemList.Add(order.Total);
+                orderItemList.Add(requests);
                 await _db.SaveChangesAsync();
+                
+                Dictionary<Guid, List<object>> orderResponse = new Dictionary<Guid, List<object>>();
+                orderResponse.Add(order.OrdersId, orderItemList);
+
                 Helper.WriteLogAsync(HttpContext, Message.OrderLogAdd);
                 res.Success = true;
-                res.Data = _db.Orders.Where(_ => _.OrdersId == order.OrdersId).FirstOrDefault();
+                res.Data = orderResponse;
             }
             catch (DbUpdateConcurrencyException)
             {
