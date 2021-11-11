@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -251,7 +250,6 @@ namespace Sales_Model.Controllers
         /// <param name="product"></param>
         /// <returns></returns>
         /// https://localhost:44335/api/products/edit
-        [DisableCors]
         [HttpPost("edit")]
         public async Task<ServiceResponse> PutAccount(Product product)
         {
