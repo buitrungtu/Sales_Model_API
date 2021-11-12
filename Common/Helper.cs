@@ -12,10 +12,9 @@ using System.Text;
 using System.Threading.Tasks;
 namespace Sales_Model.Common
 {
-    public class Helper
+    public static class Helper
     {
         private static readonly Sales_ModelContext _db = new Sales_ModelContext();
-        private IMemoryCache _cache;
         /// <summary>
         /// Ghi log vào db
         /// </summary>
@@ -118,6 +117,47 @@ namespace Sales_Model.Common
                 result = sb.ToString();
             }
             return result;
+        }
+
+        /// <summary>
+        /// Sắp xếp theo thứ tự chuỗi truyền vào như sql
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="input"></param>
+        /// <param name="queryString"></param>
+        /// <returns></returns>
+        public static IEnumerable<T> OrderBy<T>(this IEnumerable<T> input, string queryString)
+        {
+            if (string.IsNullOrEmpty(queryString))
+                return input;
+
+            int i = 0;
+            foreach (string propname in queryString.Split(','))
+            {
+                var subContent = propname.Split(' ');
+                if (subContent[1].Trim().ToLower() == "asc")
+                {
+                    if (i == 0)
+                        input = input.OrderBy(x => GetPropertyValue(x, subContent[0].Trim()));
+                    else
+                        input = ((IOrderedEnumerable<T>)input).ThenBy(x => GetPropertyValue(x, subContent[0].Trim()));
+                }
+                else
+                {
+                    if (i == 0)
+                        input = input.OrderByDescending(x => GetPropertyValue(x, subContent[0].Trim()));
+                    else
+                        input = ((IOrderedEnumerable<T>)input).ThenByDescending(x => GetPropertyValue(x, subContent[0].Trim()));
+                }
+                i++;
+            }
+
+            return input;
+        }
+        private static object GetPropertyValue(object obj, string property)
+        {
+            System.Reflection.PropertyInfo propertyInfo = obj.GetType().GetProperty(property);
+            return propertyInfo.GetValue(obj, null);
         }
     }
 }

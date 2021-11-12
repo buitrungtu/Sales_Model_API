@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -10,8 +11,6 @@ using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -39,7 +38,7 @@ namespace Sales_Model.Controllers
         /// https://localhost:44335/api/products?page=2&record=10&search=mô+hình
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<PagingData>> GetSuppliersByPage([FromQuery] string search, [FromQuery] int? page = 0, [FromQuery] int? record = 20)
+        public async Task<ActionResult<PagingData>> GetSuppliersByPage([FromQuery] string search, [FromQuery] string sort, [FromQuery] int? page = 0, [FromQuery] int? record = 20)
         {
             var pagingData = new PagingData();
             List<Product> records = new List<Product>();
@@ -55,13 +54,18 @@ namespace Sales_Model.Controllers
             }
             else
             {
-                records = await _db.Products.OrderByDescending(x => x.CreateDate).ToListAsync();
+                records = await _db.Products.ToListAsync();
+            }
+            //Sắp xếp 
+            if(sort != null && sort.Trim() != "")
+            {
+                records = Helper.OrderBy<Product>(records, sort).ToList();
             }
             pagingData.TotalRecord = records.Count();
             //Tổng số trangalue
             pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value));
             //Dữ liệu của từng trang
-            pagingData.Data = records.Skip(page.Value * record.Value).Take(record.Value).ToList();
+            pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList();
             return pagingData;
         }
         
