@@ -40,7 +40,7 @@ namespace Sales_Model.Controllers
         /// https://localhost:44335/api/order?page=2&record=10&search=mô+hình
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<PagingData>> GetOrderList([FromQuery] string s, [FromQuery] int? page = 0, [FromQuery] int? record = 10)
+        public async Task<ActionResult<PagingData>> GetOrderList([FromQuery] string s, [FromQuery] int? page = 1, [FromQuery] int? record = 20)
         {
             var pagingData = new PagingData();
             List<Order> records = new List<Order>();
@@ -50,7 +50,7 @@ namespace Sales_Model.Controllers
             //Tổng số trang
             pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value));
             //Dữ liệu của từng trang
-            pagingData.Data = records.Skip(page.Value * record.Value).Take(record.Value).ToList();
+            pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList();
             return pagingData;
         }
 

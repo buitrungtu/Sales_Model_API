@@ -38,7 +38,7 @@ namespace Sales_Model.Controllers
         /// https://localhost:44335/api/products?page=2&record=10&search=mô+hình
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<PagingData>> GetSuppliersByPage([FromQuery] string search, [FromQuery] string sort, [FromQuery] int? page = 0, [FromQuery] int? record = 20)
+        public async Task<ActionResult<PagingData>> GetSuppliersByPage([FromQuery] string search, [FromQuery] string sort, [FromQuery] int? page = 1, [FromQuery] int? record = 20)
         {
             var pagingData = new PagingData();
             List<Product> records = new List<Product>();

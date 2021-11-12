@@ -34,7 +34,7 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         /// https://localhost:44335/api/accounts?page=2&record=10&search=admin
         [HttpGet]
-        public async Task<ServiceResponse> GetAccountsByPagingAndSearch([FromQuery] string search, [FromQuery] int? page = 0, [FromQuery] int? record = 10)
+        public async Task<ServiceResponse> GetAccountsByPagingAndSearch([FromQuery] string search, [FromQuery] int? page = 1, [FromQuery] int? record = 10)
         {
             ServiceResponse res = new ServiceResponse();
             if (Helper.CheckPermission(HttpContext, "Admin"))
@@ -57,7 +57,7 @@ namespace Sales_Model.Controllers
                 }
                 pagingData.TotalRecord = records.Count(); //Tổng số bản ghi
                 pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value)); //Tổng số trang
-                pagingData.Data = records.Skip(page.Value * record.Value).Take(record.Value).ToList(); //Dữ liệu của từng trang
+                pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList(); //Dữ liệu của từng trang
                 res.Success = true;
                 res.Data = pagingData;
                 return res;
