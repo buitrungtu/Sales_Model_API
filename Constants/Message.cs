@@ -7,8 +7,11 @@ namespace Sales_Model.Constants
 {
     public class Message
     {
-        //Xử lý message tài khoản
+        //General
+        public const string SuccessMsg = "Thành công";
         public const string ErrorMsg = "Có lỗi xảy ra";
+
+        //Xử lý message tài khoản
         public const string NotAuthorize = "Bạn không có quyền này";
         public const string AccountNotFound = "Không tìm thấy tài khoản này";
         public const string AccountLoginAgain = "Bạn vui lòng đăng nhập lại để thực hiện chức năng này";
@@ -29,6 +32,8 @@ namespace Sales_Model.Constants
 
         //Xử lý message order
         public const string OrderLogChange = "Thay đổi thông tin đơn hàng";
+        public const string OrderLogDelete = "Xóa sản phẩm";
+        public const string OrderLogDeleteSuccess = "Xóa sản phẩm thành công";
         //public const string ProductLogDelete = "Xóa sản phẩm";
         public const string OrderLogAdd = "Đơn hàng mới được tạo";
         public const string OrderNotExist = "Đơn hàng này không tồn tại";
