@@ -7,6 +7,7 @@ using Sales_Model.Common;
 using Sales_Model.Constants;
 using Sales_Model.Model;
 using Sales_Model.Model.ModelCustom;
+using Sales_Model.Model.ModelCustom.Order;
 using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
@@ -31,6 +32,7 @@ namespace Sales_Model.Controllers
             _db = context;
             _cache = memoryCache;
         }
+        
         /// <summary>
         /// Lấy danh sách order có phân trang
         /// </summary>
@@ -61,11 +63,11 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         /// https://localhost:44335/api/order/detail?id=7e8dbefb-74e6-46c5-9386-302008af7fb3
         [AllowAnonymous]
-        [HttpGet("detail")]
+        [HttpGet("detail/{id}")]
         public async Task<ServiceResponse> GetOrderDetail(Guid? id)
         {
             ServiceResponse res = new ServiceResponse();
-            var userInfo = _cache.Get("account_info");
+            //var userInfo = _cache.Get("account_info");
             var order = await _db.Orders.FindAsync(id);
 
             if (order == null)
@@ -168,13 +170,19 @@ namespace Sales_Model.Controllers
                 orderItemList.Add(order.Total);
                 orderItemList.Add(requests);
                 await _db.SaveChangesAsync();
-                
-                Dictionary<Guid, List<object>> orderResponse = new Dictionary<Guid, List<object>>();
-                orderResponse.Add(order.OrdersId, orderItemList);
+
+                OrderResponse orderRes = new OrderResponse
+                {
+                    items = orderItemList,
+                    orderId = order.OrdersId.ToString(),
+                    customerName = requests.customerName.Trim(),
+                    customerPhone = requests.customerPhone.Trim(),
+                    customerAddress = requests.customerAddress.Trim()
+                };
 
                 Helper.WriteLogAsync(HttpContext, Message.OrderLogAdd);
                 res.Success = true;
-                res.Data = orderResponse;
+                res.Data = orderRes;
             }
             catch (DbUpdateConcurrencyException)
             {
