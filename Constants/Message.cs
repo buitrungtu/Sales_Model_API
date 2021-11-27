@@ -11,8 +11,12 @@ namespace Sales_Model.Constants
         public const string SuccessMsg = "Thành công";
         public const string ErrorMsg = "Có lỗi xảy ra";
 
+        //Customer
+        public const string CustomerDisplayNameMissing = "Họ tên không thể trống";
+        public const string CustomerUsernameMissing = "Username không thể trống";
+        public const string CustomerPasswordMissing = "Password không thể trống";
+
         //Xử lý message tài khoản
-        
         public const string NotAuthorize = "Bạn không có quyền này";
         public const string LoginIncorrect = "Thông tin đăng nhập không chính xác!";
         public const string AccountNotFound = "Không tìm thấy tài khoản này";

@@ -110,19 +110,40 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> CustomerLogin(Customer customer)
         {
             ServiceResponse res = new ServiceResponse();
-            res.Data = _jwtAuthenticationManager.CustomerLoginAuthenticate(
-                _db, 
-                customer.Username, 
-                customer.Password).Data;
-            if (res.Data != null)
+            if (customer.Username == null || string.IsNullOrEmpty(customer.Username))
             {
-                //Ghi log để làm nhật ký truy cập
-                //Auditinglog auditinglog = new Auditinglog();
-                //auditinglog.Action = Message.AccountLogLogin;
-                //auditinglog.Username = account.Username;
-                //_db.Auditinglogs.Add(auditinglog);
-                //await _db.SaveChangesAsync();
+                res.Message = Message.CustomerUsernameMissing;
+                res.Success = false;
+                res.ErrorCode = 400;
+
+                return res;
             }
+            if (customer.Password == null || string.IsNullOrEmpty(customer.Password))
+            {
+                res.Message = Message.CustomerPasswordMissing;
+                res.Success = false;
+                res.ErrorCode = 400;
+
+                return res;
+            }
+            string passwordMD5 = Helper.EncodeMD5(customer.Password);
+            var accountResult = _db.Customers.Where(_ => _.Username == customer.Username 
+            && _.Password == passwordMD5).FirstOrDefault();
+
+            if (accountResult == null)
+            {
+                res.Message = Message.LoginIncorrect;
+                res.Success = true;
+                res.Data = null;
+                res.ErrorCode = 400;
+                return res;
+            }
+            accountResult.LastLogin = DateTime.Now;
+            _db.Entry(accountResult).State = EntityState.Modified;
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            result.Add("account", accountResult);
+            res.Success = true;
+            res.Data = result;
             return res;
         }
 
@@ -132,10 +153,34 @@ namespace Sales_Model.Controllers
         /// <param name="customer"></param>
         /// <returns></returns>
         [AllowAnonymous]
-        [HttpPost]
+        [HttpPost("signup")]
         public async Task<ServiceResponse> CustomerSignup(Customer customer)
         {
             ServiceResponse res = new ServiceResponse();
+            if (customer.Username == null || string.IsNullOrEmpty(customer.Username))
+            {
+                res.Message = Message.CustomerUsernameMissing;
+                res.Success = false;
+                res.ErrorCode = 400;
+
+                return res;
+            }
+            if (customer.Password == null || string.IsNullOrEmpty(customer.Password))
+            {
+                res.Message = Message.CustomerPasswordMissing;
+                res.Success = false;
+                res.ErrorCode = 400;
+
+                return res;
+            }
+            if (customer.DisplayName == null || string.IsNullOrEmpty(customer.DisplayName))
+            {
+                res.Message = Message.CustomerDisplayNameMissing;
+                res.Success = false;
+                res.ErrorCode = 400;
+
+                return res;
+            }
             try
             {
                 customer.CustomerId = Guid.NewGuid();
@@ -160,29 +205,29 @@ namespace Sales_Model.Controllers
             }
             return res;
         }
+        
         /// <summary>
         /// Sửa tài khoản
         /// </summary>
         /// <param name="account"></param>
         /// <returns></returns>
         [HttpPost("edit_account")]
-        public async Task<ServiceResponse> PutAccount(Account account)
+        public async Task<ServiceResponse> PutAccount(Customer customer)
         {
             ServiceResponse res = new ServiceResponse();
             try
             {
-                var accountDb = _db.Accounts.SingleOrDefault(_ => _.AccountId == account.AccountId);
+                var accountDb = await _db.Customers.FindAsync(customer.CustomerId);
                 //Chỉ cập nhật những thông tin được phép thay đổi 
-                accountDb.Avatar = account.Avatar != null ? account.Avatar : accountDb.Avatar;
-                accountDb.Status = account.Status != null ? account.Status : accountDb.Status;
-                accountDb.Address = account.Address != null ? account.Address : accountDb.Address;
-                accountDb.Dob = account.Dob != null ? account.Dob : accountDb.Dob;
-                accountDb.FirstName = account.FirstName != null ? account.FirstName : accountDb.FirstName;
-                accountDb.LastName = account.LastName != null ? account.LastName : accountDb.LastName;
-                accountDb.Mobile = account.Mobile != null ? account.Mobile : accountDb.Mobile;
-                accountDb.EmailBackup = account.EmailBackup != null ? account.EmailBackup : accountDb.EmailBackup;
-                accountDb.DisplayName = account.DisplayName != null ? account.DisplayName : accountDb.DisplayName;
-                accountDb.IsInterestedAccount = account.IsInterestedAccount != null ? account.IsInterestedAccount : accountDb.IsInterestedAccount;
+                accountDb.Avatar = customer.Avatar != null ? customer.Avatar : accountDb.Avatar;
+                accountDb.Status = customer.Status != null ? customer.Status : accountDb.Status;
+                accountDb.Address = customer.Address != null ? customer.Address : accountDb.Address;
+                accountDb.Dob = customer.Dob != null ? customer.Dob : accountDb.Dob;
+                accountDb.FirstName = customer.FirstName != null ? customer.FirstName : accountDb.FirstName;
+                accountDb.LastName = customer.LastName != null ? customer.LastName : accountDb.LastName;
+                accountDb.Mobile = customer.Mobile != null ? customer.Mobile : accountDb.Mobile;
+                accountDb.EmailBackup = customer.EmailBackup != null ? customer.EmailBackup : accountDb.EmailBackup;
+                accountDb.DisplayName = customer.DisplayName != null ? customer.DisplayName : accountDb.DisplayName;
                 await _db.SaveChangesAsync();
                 Helper.WriteLogAsync(HttpContext, Message.AccountLogChange);
             }
