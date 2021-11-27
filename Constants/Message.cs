@@ -45,5 +45,6 @@ namespace Sales_Model.Constants
         public const string QuantityNotEnough = "Số lượng sản phẩm không đủ";
         public const string OrderStatusInvalid = "Trạng thái không hợp lệ";
         public const string OrderStatusChanged = "Trạng thái đơn hàng đã được thay đổi";
+        public const string OrderCanceled = "Đơn hàng đã huỷ";
     }
 }
