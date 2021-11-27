@@ -18,12 +18,12 @@ namespace Sales_Model.Controllers
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class AccountsController : ControllerBase
+    public class CustomerController : ControllerBase
     {
         private readonly IJwtAuthenticationManager _jwtAuthenticationManager;
         private readonly Sales_ModelContext _db;
 
-        public AccountsController(Sales_ModelContext context, IJwtAuthenticationManager jwtAuthenticationManager)
+        public CustomerController(Sales_ModelContext context, IJwtAuthenticationManager jwtAuthenticationManager)
         {
             _db = context;
             _jwtAuthenticationManager = jwtAuthenticationManager;
@@ -32,28 +32,31 @@ namespace Sales_Model.Controllers
         /// Lấy danh sách tài khoản có phân trang và cho phép tìm kiếm
         /// </summary>
         /// <returns></returns>
-        /// https://localhost:44335/api/accounts?page=2&record=10&search=admin
+        /// https://localhost:44335/api/customer?page=2&record=10&search=admin
         [HttpGet]
-        public async Task<ServiceResponse> GetAccountsByPagingAndSearch([FromQuery] string search, [FromQuery] int? page = 1, [FromQuery] int? record = 10)
+        public async Task<ServiceResponse> GetAccountsByPagingAndSearch(
+            [FromQuery] string search,
+            [FromQuery] int? page = 1,
+            [FromQuery] int? record = 10)
         {
             ServiceResponse res = new ServiceResponse();
-            if (Helper.CheckPermission(HttpContext, "Admin"))
+            try
             {
                 var pagingData = new PagingData();
-                List<Account> records = new List<Account>();
+                List<Customer> records = new List<Customer>();
                 //Tổng số bản ghi
                 if (search != null && search.Trim() != "")
                 {
                     //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
-                    string sql_get_account = "select * from account where CHARINDEX(@txtSeach, username) > 0 or CHARINDEX(@txtSeach, first_name) > 0" +
+                    string sql_get_account = "select * from customer where CHARINDEX(@txtSeach, username) > 0 or CHARINDEX(@txtSeach, first_name) > 0" +
                                                                         "or CHARINDEX(@txtSeach, last_name) > 0 or CHARINDEX(@txtSeach, display_name) > 0" +
                                                                         "or CHARINDEX(@txtSeach, address) > 0 or CHARINDEX(@txtSeach, mobile) > 0";
                     var param = new SqlParameter("@txtSeach", search);
-                    records = _db.Accounts.FromSqlRaw(sql_get_account, param).OrderByDescending(x => x.CreateDate).ToList();
+                    records = _db.Customers.FromSqlRaw(sql_get_account, param).OrderByDescending(x => x.CreateDate).ToList();
                 }
                 else
                 {
-                    records = await _db.Accounts.OrderByDescending(x => x.CreateDate).ToListAsync();
+                    records = await _db.Customers.OrderByDescending(x => x.CreateDate).ToListAsync();
                 }
                 pagingData.TotalRecord = records.Count(); //Tổng số bản ghi
                 pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value)); //Tổng số trang
@@ -62,11 +65,19 @@ namespace Sales_Model.Controllers
                 res.Data = pagingData;
                 return res;
             }
-            res.Success = false;
-            res.Message = Message.NotAuthorize;
-            res.ErrorCode = 403;
-            return res;
+            catch (Exception ex)
+            {
+                res.Success = false;
+                res.Message = Message.ErrorMsg;
+                res.ErrorCode = 500;
+                return res;
+            }
+            //res.Success = false;
+            //res.Message = Message.NotAuthorize;
+            //res.ErrorCode = 403;
+            //return res;
         }
+        
         /// <summary>
         /// Lấy chi tiết thông tin tài khoản
         /// </summary>
@@ -76,28 +87,19 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> GetAccount(Guid? id)
         {
             ServiceResponse res = new ServiceResponse();
-            var account = await _db.Accounts.FindAsync(id);
-            if (account == null)
+            var customer = await _db.Customers.FindAsync(id);
+            if (customer == null)
             {
                 res.Data = null;
                 res.Message = Message.AccountNotFound;
                 res.ErrorCode = 404;
                 return res;
             }
-            var account_info = _db.AccountInfos.Where(_ => _.AccountId == account.AccountId).FirstOrDefault();
-            Dictionary<string, object> result = new Dictionary<string, object>();
-            result.Add("account", account);
-            result.Add("account_info", account_info);
-            if (Helper.CheckPermission(HttpContext, "Admin"))//Nếu là admin thì trả về role của tk đó
-            {
-                string sql_get_role = $"select * from role where role_id in (select distinct role_id from account_role where account_id = @account_id)";
-                var roles = _db.Roles.FromSqlRaw(sql_get_role, new SqlParameter("@account_id", id)).ToList();
-                result.Add("roles", roles);
-            }
-            res.Data = result;
+            res.Data = customer;
             res.Success = true;
             return res;
         }
+
         /// <summary>
         /// Đăng nhập
         /// </summary>
@@ -105,10 +107,13 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         [AllowAnonymous]
         [HttpPost("login")]
-        public async Task<ServiceResponse> GetAccount(Account account)
+        public async Task<ServiceResponse> CustomerLogin(Customer customer)
         {
             ServiceResponse res = new ServiceResponse();
-            res.Data = _jwtAuthenticationManager.LoginAuthenticate(_db, account.Username, account.Password).Data;
+            res.Data = _jwtAuthenticationManager.CustomerLoginAuthenticate(
+                _db, 
+                customer.Username, 
+                customer.Password).Data;
             if (res.Data != null)
             {
                 //Ghi log để làm nhật ký truy cập
@@ -120,46 +125,31 @@ namespace Sales_Model.Controllers
             }
             return res;
         }
-        /// <summary>
-        /// Đăng xuất
-        /// </summary>
-        /// <returns></returns>
-        [AllowAnonymous]
-        [HttpPost("logout")]
-        public async Task<ServiceResponse> Logout()
-        {
-            ServiceResponse res = new ServiceResponse();
-            res.Success = true;
-            res.Message = Message.AccountLogoutSuccess;
-            //Ghi log để làm nhật ký truy cập
-            Helper.WriteLogAsync(HttpContext, Message.AccountLogLogout);
-            return res;
-        }
 
         /// <summary>
         /// Thêm tài khoản
         /// </summary>
-        /// <param name="account"></param>
+        /// <param name="customer"></param>
         /// <returns></returns>
         [AllowAnonymous]
         [HttpPost]
-        public async Task<ServiceResponse> PostAccount(Account account)
+        public async Task<ServiceResponse> CustomerSignup(Customer customer)
         {
             ServiceResponse res = new ServiceResponse();
             try
             {
-                account.AccountId = Guid.NewGuid();
-                account.Password = Helper.EncodeMD5(account.Password);
-                _db.Accounts.Add(account);
+                customer.CustomerId = Guid.NewGuid();
+                customer.DisplayName = customer.DisplayName.Trim();
+                customer.Username = customer.Username.Trim();
+                customer.Address = customer.Address.Trim();
+                customer.Mobile = customer.Mobile.Trim();
+                customer.CreateDate = DateTime.Now;
+                customer.Status = AccountStatus.Active;
+                customer.Password = Helper.EncodeMD5(customer.Password.Trim());
+                _db.Customers.Add(customer);
+
                 res.Success = true;
-                res.Data = account;
-                AccountInfo accInfo = new AccountInfo();
-                accInfo.AccountId = account.AccountId;
-                if (account.Username.Contains("@gmail.com"))
-                {
-                    accInfo.Email = account.Username;
-                }
-                _db.AccountInfos.Add(accInfo);
+                res.Data = customer;
                 await _db.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
@@ -235,13 +225,13 @@ namespace Sales_Model.Controllers
             }
             return res;
         }
-        
+
         // DELETE api/<AccountsController>/5
         [HttpDelete("{id}")]
         public async Task<ServiceResponse> DeleteAccount(Guid? id)
         {
             ServiceResponse res = new ServiceResponse();
-            if (!Helper.CheckPermission(HttpContext, "DeleteAccount"))//Check quyền xóa
+            if (!Helper.CheckPermission(HttpContext, "DeleteCustomer"))//Check quyền xóa
             {
                 res.Success = false;
                 res.Message = Message.NotAuthorize;
@@ -250,16 +240,14 @@ namespace Sales_Model.Controllers
             }
             else
             {
-                var account = await _db.Accounts.FindAsync(id);
+                var account = await _db.Customers.FindAsync(id);
                 if (account == null)
                 {
                     res.Success = false;
                     res.Message = Message.AccountNotFound;
                     res.ErrorCode = 404;
                 }
-                AccountInfo accInfo = _db.AccountInfos.Where(_ => _.AccountId == account.AccountId).FirstOrDefault();
-                _db.Accounts.Remove(account);
-                _db.AccountInfos.Remove(accInfo);
+                _db.Customers.Remove(account);
                 await _db.SaveChangesAsync();
                 Helper.WriteLogAsync(HttpContext, Message.AccountLogDelete);
                 res.Data = account;

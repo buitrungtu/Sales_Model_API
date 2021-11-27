@@ -11,5 +11,6 @@ namespace Sales_Model
     public interface IJwtAuthenticationManager
     {
         ServiceResponse LoginAuthenticate(Sales_ModelContext _db, string username, string password);
+        ServiceResponse CustomerLoginAuthenticate(Sales_ModelContext _db, string username, string password);
     }
 }
