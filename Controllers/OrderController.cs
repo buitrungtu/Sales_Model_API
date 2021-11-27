@@ -254,5 +254,133 @@ namespace Sales_Model.Controllers
             }
             return res;
         }
+
+        /// <summary>
+        /// Sửa trạng thái order: 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        /// https://localhost:44335/api/order
+        [HttpPost("change/status")]
+        public async Task<ServiceResponse> ChangeOrderStatus(Guid? id, int status)
+        {
+            ServiceResponse res = new ServiceResponse();
+            //if (!Helper.CheckPermission(HttpContext, "Admin"))//Check quyền xóa
+            //{
+            //    res.Success = false;
+            //    res.Message = Message.NotAuthorize;
+            //    res.ErrorCode = 403;
+            //    res.Data = Message.NotAuthorize;
+            //}
+            //else
+            //{
+            try
+            {
+                var order = await _db.Orders.FindAsync(id);
+                if (order == null)
+                {
+                    res.Message = Message.OrderNotFound;
+                    res.ErrorCode = 404;
+                    res.Success = false;
+                    res.Data = null;
+                }
+                //if (!OrderStatus.Processing.Equals(status) || !OrderStatus.Delivering.Equals(status) ||
+                //    !OrderStatus.Received.Equals(status) || !OrderStatus.Canceled.Equals(status) ||
+                //        !OrderStatus.Return.Equals(status) || !OrderStatus.Error.Equals(status))
+                //{
+                //    res.Message = Message.OrderStatusInvalid;
+                //    res.ErrorCode = 404;
+                //    res.Success = false;
+                //    res.Data = null;
+                //}
+                switch (status)
+                {
+                    case 1:
+                        order.Status = OrderStatus.Processing;
+                        res.Data = order;
+                        res.Success = true;
+                        break;
+                    case 2:
+                        order.Status = OrderStatus.Delivering;
+                        res.Data = order;
+                        res.Success = true;
+                        break;
+                    case 3:
+                        order.Status = OrderStatus.Received;
+                        res.Data = order;
+                        res.Success = true;
+                        break;
+                    case 4:
+                        order.Status = OrderStatus.Canceled;
+                        res.Data = order;
+                        res.Success = true;
+                        break;
+                    case 5:
+                        order.Status = OrderStatus.Return;
+                        res.Data = order;
+                        res.Success = true;
+                        break;
+                    case 6:
+                        order.Status = OrderStatus.Error;
+                        res.Data = order;
+                        res.Success = true;
+                        break;
+                    default:
+                        res.Message = Message.OrderStatusInvalid;
+                        res.ErrorCode = 404;
+                        res.Success = false;
+                        res.Data = null;
+                        break;
+                }
+                await _db.SaveChangesAsync();
+                await Helper.WriteLogAsync(HttpContext, Message.OrderStatusChanged);
+
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                res.Success = false;
+                res.Message = Message.ErrorMsg;
+                res.ErrorCode = 500;
+            }
+            //}
+            return res;
+        }
+
+        /// <summary>
+        /// Huỷ order: 
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        /// https://localhost:44335/api/order
+        [HttpPost("cancel")]
+        public async Task<ServiceResponse> CanceledStatus(Guid? id)
+        {
+            ServiceResponse res = new ServiceResponse();
+            try
+            {
+                var order = await _db.Orders.FindAsync(id);
+                if (order == null)
+                {
+                    res.Message = Message.OrderNotFound;
+                    res.ErrorCode = 404;
+                    res.Success = false;
+                    res.Data = null;
+                }
+                order.Status = OrderStatus.Canceled;
+                await _db.SaveChangesAsync();
+                await Helper.WriteLogAsync(HttpContext, Message.OrderStatusChanged);
+                res.Data = null;
+                res.Message = Message.OrderCanceled;
+                res.Success = true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                res.Success = false;
+                res.Message = Message.ErrorMsg;
+                res.ErrorCode = 500;
+            }
+            return res;
+        }
     }
 }
