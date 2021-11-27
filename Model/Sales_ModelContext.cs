@@ -35,6 +35,8 @@ namespace Sales_Model.OutputDirectory
         public virtual DbSet<Tag> Tags { get; set; }
         public virtual DbSet<Transaction> Transactions { get; set; }
         public virtual DbSet<Auditinglog> Auditinglogs { get; set; }
+        public virtual DbSet<Customer> Customers { get; set; }
+        public virtual DbSet<ProductImage> ProductImages { get; set; }
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
@@ -157,6 +159,10 @@ namespace Sales_Model.OutputDirectory
                 entity.Property(e => e.Intro)
                     .HasMaxLength(255)
                     .HasColumnName("intro");
+
+                entity.Property(e => e.DisplayName)
+                    .HasMaxLength(255)
+                    .HasColumnName("display_name");
 
                 entity.Property(e => e.LastName)
                     .HasMaxLength(50)
@@ -450,6 +456,20 @@ namespace Sales_Model.OutputDirectory
                     .HasMaxLength(100)
                     .HasColumnName("sku");
 
+                entity.Property(e => e.ProductName)
+                    .HasMaxLength(255)
+                    .HasColumnName("product_name");
+
+                entity.Property(e => e.ProductPrimaryImage)
+                    .HasMaxLength(255)
+                    .HasColumnName("product_primary_image");
+
+                entity.Property(e => e.ImportPrice)
+                    .HasColumnName("import_price");
+
+                entity.Property(e => e.SellingPrice)
+                    .HasColumnName("selling_price");
+
                 entity.Property(e => e.Slug)
                     .HasMaxLength(100)
                     .HasColumnName("slug");
@@ -650,6 +670,86 @@ namespace Sales_Model.OutputDirectory
                     .HasColumnType("datetime")
                     .HasColumnName("create_date")
                     .HasDefaultValueSql("(getdate())");
+            });
+            modelBuilder.Entity<Customer>(entity =>
+            {
+                entity.ToTable("customer");
+
+                entity.Property(e => e.CustomerId)
+                    .HasColumnName("customer_id")
+                    .HasDefaultValueSql("(newid())");
+
+                entity.Property(e => e.Address)
+                    .HasMaxLength(255)
+                    .IsUnicode(false)
+                    .HasColumnName("address");
+
+                entity.Property(e => e.Avatar)
+                    .HasMaxLength(255)
+                    .HasColumnName("avatar");
+
+                entity.Property(e => e.CreateDate)
+                    .HasColumnType("datetime")
+                    .HasColumnName("create_date")
+                    .HasDefaultValueSql("(getdate())");
+
+                entity.Property(e => e.DisplayName)
+                    .HasMaxLength(255)
+                    .HasColumnName("display_name");
+
+                entity.Property(e => e.Dob)
+                    .HasColumnType("datetime")
+                    .HasColumnName("dob");
+
+                entity.Property(e => e.EmailBackup)
+                    .HasMaxLength(255)
+                    .IsUnicode(false)
+                    .HasColumnName("email_backup");
+
+                entity.Property(e => e.FirstName)
+                    .HasMaxLength(100)
+                    .HasColumnName("first_name");
+
+                entity.Property(e => e.LastIp)
+                    .HasMaxLength(255)
+                    .IsUnicode(false)
+                    .HasColumnName("last_ip");
+
+                entity.Property(e => e.LastLogin)
+                    .HasColumnType("datetime")
+                    .HasColumnName("last_login")
+                    .HasDefaultValueSql("(getdate())");
+
+                entity.Property(e => e.LastName)
+                    .HasMaxLength(100)
+                    .HasColumnName("last_name");
+
+                entity.Property(e => e.Mobile)
+                    .HasMaxLength(15)
+                    .IsUnicode(false)
+                    .HasColumnName("mobile");
+
+                entity.Property(e => e.Password)
+                    .HasMaxLength(50)
+                    .HasColumnName("password");
+
+                entity.Property(e => e.Status).HasColumnName("status");
+
+                entity.Property(e => e.Username)
+                    .HasMaxLength(50)
+                    .HasColumnName("username");
+            });
+            modelBuilder.Entity<ProductImage>(entity =>
+            {
+                entity.ToTable("product_image");
+
+                entity.Property(e => e.Id).HasDefaultValueSql("(newid())");
+                entity.Property(e => e.AltContent).HasColumnName("alt_content");
+                entity.Property(e => e.Content).HasColumnName("content");
+                entity.Property(e => e.ProductId).HasColumnName("product_id");
+                entity.Property(e => e.Url)
+                    .HasMaxLength(255)
+                    .HasColumnName("url");
             });
             OnModelCreatingPartial(modelBuilder);
         }
