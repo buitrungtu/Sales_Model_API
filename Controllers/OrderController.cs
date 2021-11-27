@@ -7,6 +7,7 @@ using Sales_Model.Common;
 using Sales_Model.Constants;
 using Sales_Model.Model;
 using Sales_Model.Model.ModelCustom;
+using Sales_Model.Model.ModelCustom.Order;
 using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
@@ -31,6 +32,7 @@ namespace Sales_Model.Controllers
             _db = context;
             _cache = memoryCache;
         }
+
         /// <summary>
         /// Lấy danh sách order có phân trang
         /// </summary>
@@ -65,9 +67,8 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> GetOrderDetail(Guid? id)
         {
             ServiceResponse res = new ServiceResponse();
-            var userInfo = _cache.Get("account_info");
+            //var userInfo = _cache.Get("account_info");
             var order = await _db.Orders.FindAsync(id);
-
             if (order == null)
             {
                 res.Message = Message.OrderNotFound;
@@ -76,9 +77,25 @@ namespace Sales_Model.Controllers
                 res.Data = null;
             }
             var orderItem = await _db.OrdersItems.Where(_ => _.OrderId == order.OrdersId).ToListAsync();
-            Dictionary<string, object> result = new Dictionary<string, object>();
-            result.Add("order " + order.OrdersId, orderItem);
-            res.Data = result;
+            OrderResponseFull orderRes = new OrderResponseFull
+            {
+                items = orderItem,
+                orderId = order.OrdersId.ToString(),
+                customerName = order.CustomerName,
+                customerPhone = order.CustomerPhone,
+                customerAddress = order.CustomerAddress,
+                Status = order.Status,
+                SubTotal = order.SubTotal,
+                ItemDiscount = order.ItemDiscount,
+                Tax = order.Tax,
+                Shipping = order.Shipping,
+                Total = order.Total,
+                Promo = order.Promo,
+                Discount = order.Discount,
+                GrandTotal = order.GrandTotal,
+                Content = order.Content,
+            };
+            res.Data = orderRes;
             res.Success = true;
             return res;
         }
@@ -123,7 +140,7 @@ namespace Sales_Model.Controllers
                     }
 
                     int productExisted = (int)p.Quantity;
-                    if(productExisted < oi.quantity)
+                    if (productExisted < oi.quantity)
                     {
                         res.Message = Message.QuantityNotEnough;
                         res.ErrorCode = 404;
@@ -141,7 +158,7 @@ namespace Sales_Model.Controllers
                         return res;
                     }
 
-                    if(oi.quantity <= 0)
+                    if (oi.quantity <= 0)
                     {
                         res.Message = Message.QuantityInvalid;
                         res.ErrorCode = 404;
@@ -168,19 +185,72 @@ namespace Sales_Model.Controllers
                 orderItemList.Add(order.Total);
                 orderItemList.Add(requests);
                 await _db.SaveChangesAsync();
-                
-                Dictionary<Guid, List<object>> orderResponse = new Dictionary<Guid, List<object>>();
-                orderResponse.Add(order.OrdersId, orderItemList);
+
+                OrderResponse orderRes = new OrderResponse
+                {
+                    items = orderItemList,
+                    orderId = order.OrdersId.ToString(),
+                    customerName = requests.customerName,
+                    customerPhone = requests.customerPhone,
+                    customerAddress = requests.customerAddress
+                };
 
                 Helper.WriteLogAsync(HttpContext, Message.OrderLogAdd);
                 res.Success = true;
-                res.Data = orderResponse;
+                res.Data = orderRes;
             }
             catch (DbUpdateConcurrencyException)
             {
                 res.Success = false;
                 res.Message = Message.ErrorMsg;
                 res.ErrorCode = 500;
+            }
+            return res;
+        }
+
+        /// <summary>
+        /// Xóa 1 order
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        /// https://localhost:44335/api/order/7e8dbefb-74e6-46c5-9386-302008af7fb3
+        [HttpDelete("{id}")]
+        public async Task<ServiceResponse> DeleteOrder(Guid? id)
+        {
+            ServiceResponse res = new ServiceResponse();
+            //if (!Helper.CheckPermission(HttpContext, "DeleteOrder"))//Check quyền xóa
+            //{
+            //    res.Success = false;
+            //    res.Message = Message.NotAuthorize;
+            //    res.ErrorCode = 403;
+            //    res.Data = Message.NotAuthorize;
+            //    return res;
+            //}
+            try
+            {
+                var order = await _db.Orders.FindAsync(id);
+                if (order == null)
+                {
+                    res.Message = Message.ProductNotExist;
+                    res.ErrorCode = 404;
+                    res.Success = false;
+                }
+
+                _db.Orders.Remove(order);
+                //delete ở các bảng liên quan 
+                var lstOrderItems = _db.OrdersItems.Where(_ => _.OrderId == order.OrdersId);
+                _db.OrdersItems.RemoveRange(lstOrderItems);
+                await _db.SaveChangesAsync();
+
+                Helper.WriteLogAsync(HttpContext, Message.OrderLogDelete);
+                res.Success = false;
+                res.Message = Message.OrderLogDeleteSuccess;
+            }
+            catch
+            {
+                res.Success = false;
+                res.ErrorCode = 500;
+                res.Message = Message.ErrorMsg;
             }
             return res;
         }
