@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace Sales_Model.Controllers
 {
-    //[Authorize]
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class CategoryController : ControllerBase
@@ -36,7 +36,6 @@ namespace Sales_Model.Controllers
         /// </summary>
         /// <param name="category"></param>
         /// <returns></returns>
-        [AllowAnonymous]
         [HttpPost]
         public async Task<ServiceResponse> AddCategory(Category category)
         {
@@ -77,33 +76,33 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> GetCategoriesByPagingAndSearch([FromQuery] string search, [FromQuery] int? page = 1, [FromQuery] int? record = 10)
         {
             ServiceResponse res = new ServiceResponse();
-            //if (Helper.CheckPermission(HttpContext, "Admin"))
-            //{
-            var pagingData = new PagingData();
-            List<Category> records = new List<Category>();
-            //Tổng số bản ghi
-            if (search != null && search.Trim() != "")
+            if (Helper.CheckPermission(HttpContext, "Admin"))
             {
-                //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
-                string sql_get_category = "select * from category where CHARINDEX(@txtSeach, title) > 0 or CHARINDEX(@txtSeach, slug) > 0";
-                var param = new SqlParameter("@txtSeach", search);
-                records = _db.Categories.FromSqlRaw(sql_get_category, param).OrderByDescending(x => x.Title).ToList();
+                var pagingData = new PagingData();
+                List<Category> records = new List<Category>();
+                //Tổng số bản ghi
+                if (search != null && search.Trim() != "")
+                {
+                    //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
+                    string sql_get_category = "select * from category where CHARINDEX(@txtSeach, title) > 0 or CHARINDEX(@txtSeach, slug) > 0";
+                    var param = new SqlParameter("@txtSeach", search);
+                    records = _db.Categories.FromSqlRaw(sql_get_category, param).OrderByDescending(x => x.Title).ToList();
+                }
+                else
+                {
+                    records = await _db.Categories.OrderByDescending(x => x.Title).ToListAsync();
+                }
+                pagingData.TotalRecord = records.Count(); //Tổng số bản ghi
+                pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value)); //Tổng số trang
+                pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList(); //Dữ liệu của từng trang
+                res.Success = true;
+                res.Data = pagingData;
+                return res;
             }
-            else
-            {
-                records = await _db.Categories.OrderByDescending(x => x.Title).ToListAsync();
-            }
-            pagingData.TotalRecord = records.Count(); //Tổng số bản ghi
-            pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value)); //Tổng số trang
-            pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList(); //Dữ liệu của từng trang
-            res.Success = true;
-            res.Data = pagingData;
+            res.Success = false;
+            res.Message = Message.NotAuthorize;
+            res.ErrorCode = 403;
             return res;
-            //}
-            //res.Success = false;
-            //res.Message = Message.NotAuthorize;
-            //res.ErrorCode = 403;
-            //return res;
         }
 
         /// <summary>
@@ -111,7 +110,6 @@ namespace Sales_Model.Controllers
         /// </summary>
         /// <param name="category"></param>
         /// <returns></returns>
-        [AllowAnonymous]
         [HttpDelete("{id}")]
         public async Task<ServiceResponse> DeleteCategory(Guid? id)
         {
