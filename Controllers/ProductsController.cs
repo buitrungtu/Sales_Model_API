@@ -184,7 +184,7 @@ namespace Sales_Model.Controllers
                 product.ProductId = Guid.NewGuid();
                 product.Title = product.Title.Trim();
                 product.ProductImage = product.ProductImage.Trim();
-                product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title.Trim()) + DateTime.Now.ToFileTime().ToString();
+                product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title.Trim()) + "-" + DateTime.Now.ToFileTime().ToString();
                 if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
                     foreach (var item in product.ProductCategories)
@@ -281,7 +281,7 @@ namespace Sales_Model.Controllers
                 productDb.ProductCode = product.ProductCode != null ? product.ProductCode : productDb.ProductCode;
                 productDb.Title = product.Title?.Trim();
                 productDb.MetaTitle = product.MetaTitle != null ? product.MetaTitle.Trim() : productDb.MetaTitle;
-                productDb.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title?.Trim()) + DateTime.Now.ToFileTime().ToString(); ;
+                productDb.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title?.Trim()) + "-" + DateTime.Now.ToFileTime().ToString(); ;
                 productDb.Summary = product.Summary != null ? product.Summary.Trim() : productDb.Summary;
                 productDb.Type = product.Type != null ? product.Type : productDb.Type;
                 productDb.Sku = product.Sku != null ? product.Sku.Trim() : productDb.Sku;
@@ -520,7 +520,7 @@ namespace Sales_Model.Controllers
                     res.Data = null;
                 }
                 var param = new SqlParameter("@category_id", category.CategoryId);
-                string sql_get_category = $"select * from product p inner join product_category pc on p.id = pc.product_id where pc.category_id in (@category_id)";
+                string sql_get_category = $"select * from product p inner join product_category pc on p.id = pc.product_id where pc.category_id <> pc.category_id in (@category_id)";
                 var product = _db.Products.FromSqlRaw(sql_get_category, param).ToList();
                 data.AddRange(product);
             }

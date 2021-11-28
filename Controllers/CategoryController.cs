@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Sales_Model.Common;
 using Sales_Model.Constants;
 using Sales_Model.Model;
 using Sales_Model.OutputDirectory;
@@ -14,7 +16,7 @@ using System.Threading.Tasks;
 
 namespace Sales_Model.Controllers
 {
-    [Authorize]
+    //[Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class CategoryController : ControllerBase
@@ -51,7 +53,7 @@ namespace Sales_Model.Controllers
                 }
                 category.CategoryId = Guid.NewGuid();
                 category.Title = category.Title.Trim();
-                category.Slug = SlugGenerator.SlugGenerator.GenerateSlug(category.Title.Trim()) + DateTime.Now.ToFileTime().ToString();
+                category.Slug = SlugGenerator.SlugGenerator.GenerateSlug(category.Title.Trim()) + "-" + DateTime.Now.ToFileTime().ToString();
                 _db.Categories.Add(category);
                 res.Success = true;
                 res.Data = category;
@@ -67,27 +69,67 @@ namespace Sales_Model.Controllers
         }
 
         /// <summary>
+        /// Lấy danh sách category có phân trang và cho phép tìm kiếm
+        /// </summary>
+        /// <returns></returns>
+        /// https://localhost:44335/api/category?page=2&record=10&search=moHinh
+        [HttpGet]
+        public async Task<ServiceResponse> GetCategoriesByPagingAndSearch([FromQuery] string search, [FromQuery] int? page = 1, [FromQuery] int? record = 10)
+        {
+            ServiceResponse res = new ServiceResponse();
+            //if (Helper.CheckPermission(HttpContext, "Admin"))
+            //{
+            var pagingData = new PagingData();
+            List<Category> records = new List<Category>();
+            //Tổng số bản ghi
+            if (search != null && search.Trim() != "")
+            {
+                //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
+                string sql_get_category = "select * from category where CHARINDEX(@txtSeach, title) > 0 or CHARINDEX(@txtSeach, slug) > 0";
+                var param = new SqlParameter("@txtSeach", search);
+                records = _db.Categories.FromSqlRaw(sql_get_category, param).OrderByDescending(x => x.Title).ToList();
+            }
+            else
+            {
+                records = await _db.Categories.OrderByDescending(x => x.Title).ToListAsync();
+            }
+            pagingData.TotalRecord = records.Count(); //Tổng số bản ghi
+            pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value)); //Tổng số trang
+            pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList(); //Dữ liệu của từng trang
+            res.Success = true;
+            res.Data = pagingData;
+            return res;
+            //}
+            //res.Success = false;
+            //res.Message = Message.NotAuthorize;
+            //res.ErrorCode = 403;
+            //return res;
+        }
+
+        /// <summary>
         /// Xoá category
         /// </summary>
         /// <param name="category"></param>
         /// <returns></returns>
         [AllowAnonymous]
-        [HttpDelete]
+        [HttpDelete("{id}")]
         public async Task<ServiceResponse> DeleteCategory(Guid? id)
         {
             ServiceResponse res = new ServiceResponse();
             try
             {
-                var category = _db.Categories.FindAsync(id);
+                var category = await _db.Categories.FindAsync(id);
                 if (category == null)
                 {
                     res.Message = Message.CategoryNotFound;
                     res.ErrorCode = 404;
                     res.Success = false;
                     res.Data = null;
+                    return res;
                 }
+                _db.Categories.Remove(category);
                 res.Success = true;
-                res.Data = category;
+                res.Data = null;
                 await _db.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
