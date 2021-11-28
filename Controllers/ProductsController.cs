@@ -57,7 +57,7 @@ namespace Sales_Model.Controllers
                 records = await _db.Products.ToListAsync();
             }
             //Sắp xếp 
-            if(sort != null && sort.Trim() != "")
+            if (sort != null && sort.Trim() != "")
             {
                 records = Helper.OrderBy<Product>(records, sort).ToList();
             }
@@ -68,7 +68,7 @@ namespace Sales_Model.Controllers
             pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList();
             return pagingData;
         }
-        
+
         /// <summary>
         /// Lấy thông tin chi tiết product theo id
         /// </summary>
@@ -160,7 +160,7 @@ namespace Sales_Model.Controllers
             }
             return res;
         }
-        
+
         /// <summary>
         /// Thêm product
         /// </summary>
@@ -185,7 +185,7 @@ namespace Sales_Model.Controllers
                 product.Title = product.Title.Trim();
                 product.ProductImage = product.ProductImage.Trim();
                 product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title.Trim()) + DateTime.Now.ToFileTime().ToString();
-                if(product.ProductCategories != null && product.ProductCategories.Count > 0)
+                if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
                     foreach (var item in product.ProductCategories)
                     {
@@ -203,7 +203,7 @@ namespace Sales_Model.Controllers
                 }
                 if (product.ProductTags != null && product.ProductTags.Count > 0)
                 {
-                    foreach(var item in product.ProductTags)
+                    foreach (var item in product.ProductTags)
                     {
                         item.ProductId = product.ProductId;
                     }
@@ -224,7 +224,7 @@ namespace Sales_Model.Controllers
             }
             return res;
         }
-        
+
         /// <summary>
         /// Thêm review
         /// </summary>
@@ -435,6 +435,98 @@ namespace Sales_Model.Controllers
                 res.ErrorCode = 500;
                 res.Message = Message.ErrorMsg;
             }
+            return res;
+        }
+
+        /// <summary>
+        /// Thêm category
+        /// </summary>
+        /// <param name="review"></param>
+        /// <returns></returns>
+        /// https://localhost:44335/api/products/category
+        [HttpPost("category")]
+        public async Task<ServiceResponse> AddProductCategory(ProductCategory category)
+        {
+            ServiceResponse res = new ServiceResponse();
+            try
+            {
+                _db.ProductCategories.Add(category);
+                await _db.SaveChangesAsync();
+                res.Success = true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                res.Success = false;
+                res.Message = Message.ErrorMsg;
+                res.ErrorCode = 500;
+            }
+            return res;
+        }
+
+        /// <summary>
+        /// Xoá category
+        /// </summary>
+        /// <param name="review"></param>
+        /// <returns></returns>
+        /// https://localhost:44335/api/products/category
+        [HttpDelete("category")]
+        public async Task<ServiceResponse> DeleteProductCategory(ProductCategory category)
+        {
+            ServiceResponse res = new ServiceResponse();
+            try
+            {
+                _db.ProductCategories.Remove(category);
+                await _db.SaveChangesAsync();
+                res.Success = true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                res.Success = false;
+                res.Message = Message.ErrorMsg;
+                res.ErrorCode = 500;
+            }
+            return res;
+        }
+
+        /// <summary>
+        /// Lấy danh sách product theo category
+        /// </summary>
+        /// <param name="page">trang</param>
+        /// <param name="record">số bản ghi trên 1 trang</param>
+        /// <returns></returns>
+        /// https://localhost:44335/api/products?page=2&record=10&search=mô+hình
+        [AllowAnonymous]
+        [HttpGet]
+        public async Task<ActionResult<ServiceResponse>> GetProductByCategory(List<Guid?> categoryIds)
+        {
+            ServiceResponse res = new ServiceResponse();
+            List<Product> data = new List<Product>();
+            //Tổng số bản ghi
+            //var data = _db.Products.Join(_db.Categories, product => product.ProductId, category => category.CategoryId,
+            //    (product, category) => new
+            //    {
+            //        CategoryId = category.CategoryId,
+            //        product = product,
+
+            //    }).ToListAsync();
+            foreach(var id in categoryIds)
+            {
+                var category = await _db.Categories.FindAsync(id);
+                if (category == null)
+                {
+                    res.Message = Message.CategoryNotFound;
+                    res.ErrorCode = 404;
+                    res.Success = false;
+                    res.Data = null;
+                }
+                var param = new SqlParameter("@category_id", category.CategoryId);
+                string sql_get_category = $"select * from product p inner join product_category pc on p.id = pc.product_id where pc.category_id in (@category_id)";
+                var product = _db.Products.FromSqlRaw(sql_get_category, param).ToList();
+                data.AddRange(product);
+            }
+
+            res.Data = data;
+            res.Success = true;
             return res;
         }
     }

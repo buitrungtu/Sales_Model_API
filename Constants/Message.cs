@@ -10,6 +10,7 @@ namespace Sales_Model.Constants
         //General
         public const string SuccessMsg = "Thành công";
         public const string ErrorMsg = "Có lỗi xảy ra";
+        public const string TitleError = "Tiêu đề không thể trống";
 
         //Customer
         public const string CustomerDisplayNameMissing = "Họ tên không thể trống";
@@ -50,5 +51,8 @@ namespace Sales_Model.Constants
         public const string OrderStatusInvalid = "Trạng thái không hợp lệ";
         public const string OrderStatusChanged = "Trạng thái đơn hàng đã được thay đổi";
         public const string OrderCanceled = "Đơn hàng đã huỷ";
+
+        // Category
+        public const string CategoryNotFound = "Danh mục không tồn tại";
     }
 }
