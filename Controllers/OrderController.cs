@@ -116,6 +116,7 @@ namespace Sales_Model.Controllers
                 order.OrdersId = Guid.NewGuid();
                 order.SessionId = "";
                 order.Token = "";
+                order.AccountId = requests.customerId;
                 order.CustomerName = requests.customerName.Trim();
                 order.CustomerPhone = requests.customerPhone.Trim();
                 order.CustomerAddress = requests.customerAddress.Trim();

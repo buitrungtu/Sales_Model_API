@@ -8,6 +8,7 @@ namespace Sales_Model.Model.ModelCustom
     public class OrderInfoRequest
     {
         public List<OrderItemRequest> items;
+        public Guid? customerId { get; set; }
 
         public string customerName { get; set; }
 

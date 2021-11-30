@@ -52,11 +52,13 @@ namespace Sales_Model.Controllers
                 }
                 category.CategoryId = Guid.NewGuid();
                 category.Title = category.Title.Trim();
+                category.CategoryCode = category.CategoryCode.Trim();
                 category.Slug = SlugGenerator.SlugGenerator.GenerateSlug(category.Title.Trim()) + "-" + DateTime.Now.ToFileTime().ToString();
                 _db.Categories.Add(category);
+                await _db.SaveChangesAsync();
+
                 res.Success = true;
                 res.Data = category;
-                await _db.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -72,39 +74,52 @@ namespace Sales_Model.Controllers
         /// </summary>
         /// <returns></returns>
         /// https://localhost:44335/api/category?page=2&record=10&search=moHinh
+        [AllowAnonymous]
         [HttpGet]
-        public async Task<ServiceResponse> GetCategoriesByPagingAndSearch([FromQuery] string search, [FromQuery] int? page = 1, [FromQuery] int? record = 10)
+        public async Task<PagingData> GetCategoriesByPagingAndSearch([FromQuery] string search, [FromQuery] int? page = 1, [FromQuery] int? record = 10)
+        {
+            var pagingData = new PagingData();
+            List<Category> records = new List<Category>();
+            //Tổng số bản ghi
+            if (search != null && search.Trim() != "")
+            {
+                //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
+                string sql_get_category = "select * from category where CHARINDEX(@txtSeach, title) > 0 or CHARINDEX(@txtSeach, slug) > 0";
+                var param = new SqlParameter("@txtSeach", search);
+                records = _db.Categories.FromSqlRaw(sql_get_category, param).OrderByDescending(x => x.Title).ToList();
+            }
+            else
+            {
+                records = await _db.Categories.OrderByDescending(x => x.Title).ToListAsync();
+            }
+            pagingData.TotalRecord = records.Count(); //Tổng số bản ghi
+            pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value)); //Tổng số trang
+            pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList(); //Dữ liệu của từng trang
+
+            return pagingData;
+        }
+        
+        [AllowAnonymous]
+        [HttpGet("detail")]
+        public async Task<ServiceResponse> GetCategoryDetail(Guid? id)
         {
             ServiceResponse res = new ServiceResponse();
-            if (Helper.CheckPermission(HttpContext, "Admin"))
+            var category = await _db.Categories.FindAsync(id);
+            if (category == null)
             {
-                var pagingData = new PagingData();
-                List<Category> records = new List<Category>();
-                //Tổng số bản ghi
-                if (search != null && search.Trim() != "")
-                {
-                    //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
-                    string sql_get_category = "select * from category where CHARINDEX(@txtSeach, title) > 0 or CHARINDEX(@txtSeach, slug) > 0";
-                    var param = new SqlParameter("@txtSeach", search);
-                    records = _db.Categories.FromSqlRaw(sql_get_category, param).OrderByDescending(x => x.Title).ToList();
-                }
-                else
-                {
-                    records = await _db.Categories.OrderByDescending(x => x.Title).ToListAsync();
-                }
-                pagingData.TotalRecord = records.Count(); //Tổng số bản ghi
-                pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value)); //Tổng số trang
-                pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList(); //Dữ liệu của từng trang
-                res.Success = true;
-                res.Data = pagingData;
-                return res;
+                res.Message = Message.ProductNotFound;
+                res.ErrorCode = 404;
+                res.Success = false;
+                res.Data = null;
             }
-            res.Success = false;
-            res.Message = Message.NotAuthorize;
-            res.ErrorCode = 403;
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            result.Add("category", category);
+
+            res.Data = result;
+            res.Success = true;
             return res;
         }
-
+        
         /// <summary>
         /// Xoá category
         /// </summary>
