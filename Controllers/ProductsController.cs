@@ -496,7 +496,7 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         /// https://localhost:44335/api/products?page=2&record=10&search=mô+hình
         [AllowAnonymous]
-        [HttpGet]
+        [HttpGet("by_category")]
         public async Task<ActionResult<ServiceResponse>> GetProductByCategory(List<Guid?> categoryIds)
         {
             ServiceResponse res = new ServiceResponse();

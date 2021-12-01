@@ -70,6 +70,74 @@ namespace Sales_Model.Controllers
         }
 
         /// <summary>
+        /// Sửa category
+        /// </summary>
+        /// <param name="category"></param>
+        /// <returns></returns>
+        [HttpPost("edit")]
+        public async Task<ServiceResponse> EditCategory(Category category)
+        {
+            ServiceResponse res = new ServiceResponse();
+            try
+            {
+                if (string.IsNullOrEmpty(category.CategoryId.ToString()))
+                {
+                    res.Message = Message.CategoryIDCannotNull;
+                    res.Success = false;
+                    res.ErrorCode = 400;
+
+                    return res;
+                }
+                if (string.IsNullOrEmpty(category.Title))
+                {
+                    res.Message = Message.CategoryTitleCannotNull;
+                    res.Success = false;
+                    res.ErrorCode = 400;
+
+                    return res;
+                }
+
+                var cateCheckCode = await _db.Categories
+                    .Where(_ => _.CategoryCode.Equals(category.CategoryCode) &&
+                    !_.CategoryId.Equals(category.CategoryId))
+                    .FirstOrDefaultAsync();
+                if (cateCheckCode != null)
+                {
+                    res.Message = Message.CategoryCodeExist;
+                    res.Success = false;
+                    res.ErrorCode = 400;
+
+                    return res;
+                }
+
+                var cate = await _db.Categories.FindAsync(category.CategoryId);
+                if (cate == null)
+                {
+                    res.Message = Message.CategoryNotFound;
+                    res.Success = false;
+                    res.ErrorCode = 404;
+
+                    return res;
+                }
+
+                cate.Title = category.Title.Trim();
+                cate.CategoryCode = category.CategoryCode.Trim();
+                cate.Slug = SlugGenerator.SlugGenerator.GenerateSlug(category.Title.Trim()) + "-" + DateTime.Now.ToFileTime().ToString();
+                await _db.SaveChangesAsync();
+
+                res.Success = true;
+                res.Data = category;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                res.Message = Message.ErrorMsg;
+                res.Success = false;
+                res.ErrorCode = 500;
+            }
+            return res;
+        }
+
+        /// <summary>
         /// Lấy danh sách category có phân trang và cho phép tìm kiếm
         /// </summary>
         /// <returns></returns>
@@ -98,7 +166,12 @@ namespace Sales_Model.Controllers
 
             return pagingData;
         }
-        
+
+        /// <summary>
+        /// Detail category
+        /// </summary>
+        /// <param name="category"></param>
+        /// <returns></returns>
         [AllowAnonymous]
         [HttpGet("detail")]
         public async Task<ServiceResponse> GetCategoryDetail(Guid? id)
@@ -119,7 +192,7 @@ namespace Sales_Model.Controllers
             res.Success = true;
             return res;
         }
-        
+
         /// <summary>
         /// Xoá category
         /// </summary>

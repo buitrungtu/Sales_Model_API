@@ -41,6 +41,7 @@ namespace Sales_Model.Constants
         public const string OrderLogChange = "Thay đổi thông tin đơn hàng";
         public const string OrderLogDelete = "Xóa sản phẩm";
         public const string OrderLogDeleteSuccess = "Xóa sản phẩm thành công";
+
         //public const string ProductLogDelete = "Xóa sản phẩm";
         public const string OrderLogAdd = "Đơn hàng mới được tạo";
         public const string OrderNotExist = "Đơn hàng này không tồn tại";
@@ -53,6 +54,9 @@ namespace Sales_Model.Constants
         public const string OrderCanceled = "Đơn hàng đã huỷ";
 
         // Category
-        public const string CategoryNotFound = "Danh mục không tồn tại";
+        public const string CategoryNotFound = "Phân loại sản phẩm không tồn tại";
+        public const string CategoryTitleCannotNull = "Tên phân loại sản phẩm không tồn tại";
+        public const string CategoryIDCannotNull = "ID phân loại không được trống";
+        public const string CategoryCodeExist = "Mã phân loại đã tồn tại";
     }
 }
