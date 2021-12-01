@@ -496,11 +496,10 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         /// https://localhost:44335/api/products?page=2&record=10&search=mô+hình
         [AllowAnonymous]
-        [HttpGet("by_category")]
+        [HttpPost("by_category")]
         public async Task<ActionResult<ServiceResponse>> GetProductByCategory(List<Guid?> categoryIds)
         {
             ServiceResponse res = new ServiceResponse();
-            List<Product> data = new List<Product>();
             //Tổng số bản ghi
             //var data = _db.Products.Join(_db.Categories, product => product.ProductId, category => category.CategoryId,
             //    (product, category) => new
@@ -509,22 +508,25 @@ namespace Sales_Model.Controllers
             //        product = product,
 
             //    }).ToListAsync();
-            foreach(var id in categoryIds)
-            {
-                var category = await _db.Categories.FindAsync(id);
-                if (category == null)
-                {
-                    res.Message = Message.CategoryNotFound;
-                    res.ErrorCode = 404;
-                    res.Success = false;
-                    res.Data = null;
-                }
-                var param = new SqlParameter("@category_id", category.CategoryId);
-                string sql_get_category = $"select * from product p inner join product_category pc on p.id = pc.product_id where pc.category_id <> pc.category_id in (@category_id)";
-                var product = _db.Products.FromSqlRaw(sql_get_category, param).ToList();
-                data.AddRange(product);
-            }
-
+            //foreach(var id in categoryIds)
+            //{
+            //    var category = await _db.Categories.FindAsync(id);
+            //    if (category == null)
+            //    {
+            //        res.Message = Message.CategoryNotFound;
+            //        res.ErrorCode = 404;
+            //        res.Success = false;
+            //        res.Data = null;
+            //    }
+            //    string sql_get_category = $"select * from product p inner join product_category pc on p.id = pc.product_id where pc.category_id <> pc.category_id in (@category_id)";
+            //    var param = new SqlParameter("@category_id", category.CategoryId);
+            //    var product = _db.Products.FromSqlRaw(sql_get_category, param).ToList();
+            //    data.AddRange(product);
+            //}
+            var test = await _db.Categories.ToListAsync();
+            string sql_get_category = $"select * " +
+                                        $"from product p where p.product_id in (select pc.product_id from product_category pc where pc.category_id in (@category_ids))";
+            var data = _db.Products.FromSqlRaw(sql_get_category, new SqlParameter("@category_ids", String.Join(", ", categoryIds.ToArray()))).ToList();
             res.Data = data;
             res.Success = true;
             return res;
