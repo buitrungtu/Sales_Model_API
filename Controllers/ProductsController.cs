@@ -42,6 +42,7 @@ namespace Sales_Model.Controllers
         {
             var pagingData = new PagingData();
             List<Product> records = new List<Product>();
+           
             //Tổng số bản ghi
             if (search != null && search.Trim() != "")
             {
@@ -66,6 +67,7 @@ namespace Sales_Model.Controllers
             pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value));
             //Dữ liệu của từng trang
             pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList();
+            
             return pagingData;
         }
 

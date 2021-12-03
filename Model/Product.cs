@@ -13,9 +13,8 @@ namespace Sales_Model.OutputDirectory
         public string ProductCode { get; set; }
         public string ProductName { get; set; }
         public string ProductPrimaryImage { get; set; }
-        public float ImportPrice { get; set; }
-        public float SellingPrice { get; set; }
-
+        public float? ImportPrice { get; set; }
+        public float? SellingPrice { get; set; }
         public string Title { get; set; }
         public string MetaTitle { get; set; }
         public string Slug { get; set; }
