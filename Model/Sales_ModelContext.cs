@@ -501,7 +501,8 @@ namespace Sales_Model.OutputDirectory
 
             modelBuilder.Entity<ProductCategory>(entity =>
             {
-                entity.HasNoKey();
+                //entity.HasNoKey();
+                entity.HasKey(x => new { x.CategoryId, x.ProductId });
 
                 entity.ToTable("product_category");
 

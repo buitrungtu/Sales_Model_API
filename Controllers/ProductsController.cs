@@ -7,6 +7,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Sales_Model.Common;
 using Sales_Model.Constants;
 using Sales_Model.Model;
+using Sales_Model.Model.ModelCustom.Product;
 using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
@@ -38,13 +39,17 @@ namespace Sales_Model.Controllers
         /// https://localhost:44335/api/products?page=2&record=10&search=mô+hình
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<PagingData>> GetSuppliersByPage([FromQuery] string search, [FromQuery] string sort, [FromQuery] int? page = 1, [FromQuery] int? record = 20)
+        public async Task<ActionResult<PagingData>> GetSuppliersByPage(
+            [FromQuery] string search,
+            [FromQuery] string sort,
+            [FromQuery] int? page = 1,
+            [FromQuery] int? record = 20)
         {
             var pagingData = new PagingData();
-            List<Product> records = new List<Product>();
-           
+            List<Product> records = await _db.Products.ToListAsync();
+
             //Tổng số bản ghi
-            if (search != null && search.Trim() != "")
+            if (!string.IsNullOrEmpty(search))
             {
                 //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
                 string sql_get_product = "select * from product where CHARINDEX(@txtSeach, product_code) > 0 or CHARINDEX(@txtSeach, title) > 0" +
@@ -53,12 +58,8 @@ namespace Sales_Model.Controllers
                 var param = new SqlParameter("@txtSeach", search);
                 records = _db.Products.FromSqlRaw(sql_get_product, param).OrderByDescending(x => x.CreateDate).ToList();
             }
-            else
-            {
-                records = await _db.Products.ToListAsync();
-            }
             //Sắp xếp 
-            if (sort != null && sort.Trim() != "")
+            if (!string.IsNullOrEmpty(sort))
             {
                 records = Helper.OrderBy<Product>(records, sort).ToList();
             }
@@ -67,7 +68,7 @@ namespace Sales_Model.Controllers
             pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value));
             //Dữ liệu của từng trang
             pagingData.Data = records.Skip((page.Value - 1) * record.Value).Take(record.Value).ToList();
-            
+
             return pagingData;
         }
 
@@ -170,7 +171,7 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         /// https://localhost:44335/api/products
         [HttpPost]
-        public async Task<ServiceResponse> PostProduct(Product product)
+        public async Task<ServiceResponse> PostProduct(ProductRequest product)
         {
             ServiceResponse res = new ServiceResponse();
             if (!Helper.CheckPermission(HttpContext, "AddProduct"))//Check quyền
@@ -189,30 +190,63 @@ namespace Sales_Model.Controllers
                 product.Slug = SlugGenerator.SlugGenerator.GenerateSlug(product.Title.Trim()) + "-" + DateTime.Now.ToFileTime().ToString();
                 if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
-                    foreach (var item in product.ProductCategories)
+                    var list = new List<ProductCategory>();
+                    foreach (var categoryId in product.ProductCategories)
                     {
-                        item.ProductId = product.ProductId;
+                        var category = new ProductCategory
+                        {
+                            ProductId = product.ProductId,
+                            CategoryId = categoryId,
+                        };
+                        list.Add(category);
                     }
-                    _db.ProductCategories.AddRange(product.ProductCategories);
+                    _db.ProductCategories.AddRange(list);
                 }
-                if (product.ProductMetas != null && product.ProductMetas.Count > 0)
-                {
-                    foreach (var item in product.ProductMetas)
-                    {
-                        item.ProductId = product.ProductId;
-                    }
-                    _db.ProductMeta.AddRange(product.ProductMetas);
-                }
-                if (product.ProductTags != null && product.ProductTags.Count > 0)
-                {
-                    foreach (var item in product.ProductTags)
-                    {
-                        item.ProductId = product.ProductId;
-                    }
-                    _db.ProductTags.AddRange(product.ProductTags);
-                }
+                //if (product.ProductMetas != null && product.ProductMetas.Count > 0)
+                //{
+                //    foreach (var item in product.ProductMetas)
+                //    {
+                //        item.ProductId = product.ProductId;
+                //    }
+                //    _db.ProductMeta.AddRange(product.ProductMetas);
+                //}
+                //if (product.ProductTags != null && product.ProductTags.Count > 0)
+                //{
+                //    foreach (var item in product.ProductTags)
+                //    {
+                //        item.ProductId = product.ProductId;
+                //    }
+                //    _db.ProductTags.AddRange(product.ProductTags);
+                //}
 
-                await _db.Products.AddAsync(product);
+                var productAddInstance = new Product
+                {
+                    ProductId = product.ProductId,
+                    AccountId = null,
+                    ProductCode = product.ProductCode,
+                    ProductName = product.ProductName,
+                    ProductPrimaryImage = product.ProductPrimaryImage,
+                    ImportPrice = product.ImportPrice,
+                    SellingPrice = product.SellingPrice,
+                    Title = product.Title,
+                    MetaTitle = product.MetaTitle,
+                    Slug = product.Slug,
+                    Summary = product.Summary,
+                    Type = product.Type,
+                    Sku = product.Sku,
+                    Price = product.Price,
+                    Discount = product.Discount,
+                    Quantity = product.Quantity,
+                    Shop = product.Shop,
+                    Content = product.Content,
+                    CreateDate = DateTime.Now,
+                    UpdateDate = DateTime.Now,
+                    PublishedDate = DateTime.Now,
+                    StartDate = DateTime.Now,
+                    EndDate = null,
+                };
+
+                await _db.Products.AddAsync(productAddInstance);
                 await _db.SaveChangesAsync();
                 Helper.WriteLogAsync(HttpContext, Message.ProductLogAdd);
                 res.Success = true;
@@ -288,6 +322,7 @@ namespace Sales_Model.Controllers
                 productDb.Type = product.Type != null ? product.Type : productDb.Type;
                 productDb.Sku = product.Sku != null ? product.Sku.Trim() : productDb.Sku;
                 productDb.Price = product.Price != null ? product.Price : productDb.Price;
+                productDb.ImportPrice = product.ImportPrice != null ? product.ImportPrice : productDb.ImportPrice;
                 productDb.Discount = product.Discount != null ? product.Discount : productDb.Discount;
                 productDb.Quantity = product.Quantity != null ? product.Quantity : productDb.Quantity;
                 productDb.Shop = product.Shop != null ? product.Shop : productDb.Shop;
