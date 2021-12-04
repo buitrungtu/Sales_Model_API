@@ -264,7 +264,7 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         /// https://localhost:44335/api/order
         [HttpPost("change/status")]
-        public async Task<ServiceResponse> ChangeOrderStatus(Guid? id, int status)
+        public async Task<ServiceResponse> ChangeOrderStatus(OrderInfoRequest req)
         {
             ServiceResponse res = new ServiceResponse();
             //if (!Helper.CheckPermission(HttpContext, "Admin"))//Check quyền xóa
@@ -278,7 +278,7 @@ namespace Sales_Model.Controllers
             //{
             try
             {
-                var order = await _db.Orders.FindAsync(id);
+                var order = await _db.Orders.FindAsync(req.orderId);
                 if (order == null)
                 {
                     res.Message = Message.OrderNotFound;
@@ -295,7 +295,7 @@ namespace Sales_Model.Controllers
                 //    res.Success = false;
                 //    res.Data = null;
                 //}
-                switch (status)
+                switch (req.status)
                 {
                     case 1:
                         order.Status = OrderStatus.Processing;
