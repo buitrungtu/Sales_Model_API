@@ -286,7 +286,7 @@ namespace Sales_Model.Controllers
                     res.Success = false;
                     res.Data = null;
                 }
-                if (req.status > 0 || req.status <= 6)
+                if (req.status >= OrderStatus.Processing || req.status <= OrderStatus.Error)
                 {
                     order.Status = req.status;
                     order.CustomerAddress = req.customerAddress;
