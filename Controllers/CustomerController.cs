@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Sales_Model.Common;
 using Sales_Model.Constants;
 using Sales_Model.Model;
+using Sales_Model.Model.ModelCustom;
 using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
@@ -107,10 +108,10 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         [AllowAnonymous]
         [HttpPost("login")]
-        public async Task<ServiceResponse> CustomerLogin(Customer customer)
+        public async Task<ServiceResponse> CustomerLogin(CustomerLogin customer)
         {
             ServiceResponse res = new ServiceResponse();
-            if (customer.Username == null || string.IsNullOrEmpty(customer.Username))
+            if (customer.UserName == null || string.IsNullOrEmpty(customer.UserName))
             {
                 res.Message = Message.CustomerUsernameMissing;
                 res.Success = false;
@@ -127,7 +128,7 @@ namespace Sales_Model.Controllers
                 return res;
             }
             string passwordMD5 = Helper.EncodeMD5(customer.Password);
-            var accountResult = _db.Customers.Where(_ => _.Username == customer.Username 
+            var accountResult = _db.Customers.Where(_ => _.Username == customer.UserName
             && _.Password == passwordMD5).FirstOrDefault();
 
             if (accountResult == null)

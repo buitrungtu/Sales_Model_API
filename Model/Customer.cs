@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Runtime.Serialization;
+using System.Text.Json.Serialization;
 
 namespace Sales_Model.Model
 {
@@ -10,6 +10,7 @@ namespace Sales_Model.Model
         public Guid CustomerId { get; set; }
         public string Avatar { get; set; }
         public string Username { get; set; }
+        [IgnoreDataMember]
         public string Password { get; set; }
         public int? Status { get; set; }
         public string Address { get; set; }

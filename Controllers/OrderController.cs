@@ -286,12 +286,12 @@ namespace Sales_Model.Controllers
                     res.Success = false;
                     res.Data = null;
                 }
-                if (req.status >= OrderStatus.Processing || req.status <= OrderStatus.Error)
+                if (req.status >= OrderStatus.Processing && req.status <= OrderStatus.Error)
                 {
                     order.Status = req.status;
-                    order.CustomerAddress = req.customerAddress;
-                    order.CustomerName = req.customerName;
-                    order.CustomerPhone = req.customerPhone;
+                    order.CustomerAddress = req.customerAddress.Trim();
+                    order.CustomerName = req.customerName.Trim();
+                    order.CustomerPhone = req.customerPhone.Trim();
                     res.Data = order;
                     res.Message = Message.OrderStatusChanged;
                     res.Success = true;
