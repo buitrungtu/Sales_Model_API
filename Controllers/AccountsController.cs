@@ -142,7 +142,6 @@ namespace Sales_Model.Controllers
         /// </summary>
         /// <param name="account"></param>
         /// <returns></returns>
-        [AllowAnonymous]
         [HttpPost]
         public async Task<ServiceResponse> PostAccount(AccountInfoRequest request)
         {
@@ -202,7 +201,6 @@ namespace Sales_Model.Controllers
         /// <param name="account"></param>
         /// <returns></returns>
         [HttpPost("edit_account")]
-        [AllowAnonymous]
         public async Task<ServiceResponse> PutAccount(AccountInfoRequest request)
         {
             ServiceResponse res = new ServiceResponse();

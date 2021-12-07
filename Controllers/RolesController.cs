@@ -126,12 +126,11 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         /// https://localhost:44335/api/roles/roles_account?id=0f76c9fa-509f-4e75-afde-2a79b5c9df56
         [HttpPost()]
-        [AllowAnonymous]
         public async Task<ServiceResponse> AddRole(RoleRequest request)
         {
             ServiceResponse res = new ServiceResponse();
-            //if (!Helper.CheckPermission(HttpContext, "Admin"))//Check quyền admin
-            //{
+            if (!Helper.CheckPermission(HttpContext, "Admin"))//Check quyền admin
+            {
                 
                 var existed = await _db.Roles.FindAsync(request.RoleId);
                 if (existed != null)
@@ -151,7 +150,7 @@ namespace Sales_Model.Controllers
                 res.Message = Message.SuccessMsg;
                 res.ErrorCode = 0;
                 res.Data = r;
-            //}
+            }
             res.Success = true;
             return res;
         }
