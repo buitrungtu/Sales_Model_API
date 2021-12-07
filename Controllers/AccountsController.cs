@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Sales_Model.Common;
 using Sales_Model.Constants;
 using Sales_Model.Model;
+using Sales_Model.Model.ModelCustom;
 using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
@@ -84,10 +85,10 @@ namespace Sales_Model.Controllers
                 res.ErrorCode = 404;
                 return res;
             }
-            var account_info = _db.AccountInfos.Where(_ => _.AccountId == account.AccountId).FirstOrDefault();
+            //var account_info = _db.AccountInfos.Where(_ => _.AccountId == account.AccountId).FirstOrDefault();
             Dictionary<string, object> result = new Dictionary<string, object>();
             result.Add("account", account);
-            result.Add("account_info", account_info);
+            //result.Add("account_info", account_info);
             if (Helper.CheckPermission(HttpContext, "Admin"))//Nếu là admin thì trả về role của tk đó
             {
                 string sql_get_role = $"select * from role where role_id in (select distinct role_id from account_role where account_id = @account_id)";
@@ -143,21 +144,46 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         [AllowAnonymous]
         [HttpPost]
-        public async Task<ServiceResponse> PostAccount(Account account)
+        public async Task<ServiceResponse> PostAccount(AccountInfoRequest request)
         {
             ServiceResponse res = new ServiceResponse();
             try
             {
-                account.AccountId = Guid.NewGuid();
-                account.Password = Helper.EncodeMD5(account.Password);
+                Account account = new Account
+                {
+                    AccountId = Guid.NewGuid(),
+                    Username = request.Username.Trim(),
+                    Password = Helper.EncodeMD5(request.Password.Trim()),
+                    Address = request.Address,
+                    Mobile = request.Mobile,
+                    CreateDate = DateTime.Now,
+                    DisplayName = request.DisplayName,
+                    Status = AccountStatus.Active
+                };
+                
                 _db.Accounts.Add(account);
                 res.Success = true;
                 res.Data = account;
                 AccountInfo accInfo = new AccountInfo();
-                accInfo.AccountId = account.AccountId;
-                if (account.Username.Contains("@gmail.com"))
+                accInfo.AccountId = request.AccountId;
+                accInfo.Mobile = request.Mobile;
+                if (request.Username.Contains("@gmail.com"))
                 {
-                    accInfo.Email = account.Username;
+                    accInfo.Email = request.Username;
+                }
+                if (request.RoleIds != null && request.RoleIds.Count > 0)
+                {
+                    var listRole = new List<AccountRole>();
+                    foreach (var roleId in request.RoleIds)
+                    {
+                        var accRole = new AccountRole
+                        {
+                            AccountId = account.AccountId,
+                            RoleId = roleId,
+                        };
+                        listRole.Add(accRole);
+                    }
+                    _db.AccountRoles.AddRange(listRole);
                 }
                 _db.AccountInfos.Add(accInfo);
                 await _db.SaveChangesAsync();
@@ -176,25 +202,68 @@ namespace Sales_Model.Controllers
         /// <param name="account"></param>
         /// <returns></returns>
         [HttpPost("edit_account")]
-        public async Task<ServiceResponse> PutAccount(Account account)
+        [AllowAnonymous]
+        public async Task<ServiceResponse> PutAccount(AccountInfoRequest request)
         {
             ServiceResponse res = new ServiceResponse();
             try
             {
-                var accountDb = _db.Accounts.SingleOrDefault(_ => _.AccountId == account.AccountId);
+                var accountDb = _db.Accounts.SingleOrDefault(_ => _.AccountId == request.AccountId);
                 //Chỉ cập nhật những thông tin được phép thay đổi 
-                accountDb.Avatar = account.Avatar != null ? account.Avatar : accountDb.Avatar;
-                accountDb.Status = account.Status != null ? account.Status : accountDb.Status;
-                accountDb.Address = account.Address != null ? account.Address : accountDb.Address;
-                accountDb.Dob = account.Dob != null ? account.Dob : accountDb.Dob;
-                accountDb.FirstName = account.FirstName != null ? account.FirstName : accountDb.FirstName;
-                accountDb.LastName = account.LastName != null ? account.LastName : accountDb.LastName;
-                accountDb.Mobile = account.Mobile != null ? account.Mobile : accountDb.Mobile;
-                accountDb.EmailBackup = account.EmailBackup != null ? account.EmailBackup : accountDb.EmailBackup;
-                accountDb.DisplayName = account.DisplayName != null ? account.DisplayName : accountDb.DisplayName;
-                accountDb.IsInterestedAccount = account.IsInterestedAccount != null ? account.IsInterestedAccount : accountDb.IsInterestedAccount;
+                accountDb.Avatar = request.Avatar != null ? request.Avatar : accountDb.Avatar;
+                accountDb.Status = request.Status != null ? request.Status : accountDb.Status;
+                accountDb.Address = request.Address != null ? request.Address : accountDb.Address;
+                accountDb.Dob = request.Dob != null ? request.Dob : accountDb.Dob;
+                accountDb.FirstName = request.FirstName != null ? request.FirstName : accountDb.FirstName;
+                accountDb.LastName = request.LastName != null ? request.LastName : accountDb.LastName;
+                accountDb.Mobile = request.Mobile != null ? request.Mobile : accountDb.Mobile;
+                accountDb.EmailBackup = request.EmailBackup != null ? request.EmailBackup : accountDb.EmailBackup;
+                accountDb.DisplayName = request.DisplayName != null ? request.DisplayName : accountDb.DisplayName;
+                accountDb.IsInterestedAccount = request.IsInterestedAccount != null ? request.IsInterestedAccount : accountDb.IsInterestedAccount;
+                // remove all old role before update new role of account
+                var listOldRole = await _db.AccountRoles.Where(_ => _.AccountId == request.AccountId).ToListAsync();
+                _db.AccountRoles.RemoveRange(listOldRole);
+                if (request.RoleIds != null && request.RoleIds.Count > 0)
+                {
+                    var listRole = new List<AccountRole>();
+                    foreach (var roleId in request.RoleIds)
+                    {
+                        var accRole = new AccountRole
+                        {
+                            AccountId = request.AccountId,
+                            RoleId = roleId,
+                        };
+                        listRole.Add(accRole);
+                    }
+                    _db.AccountRoles.AddRange(listRole);
+                }
                 await _db.SaveChangesAsync();
                 Helper.WriteLogAsync(HttpContext, Message.AccountLogChange);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                res.Success = false;
+                res.Message = Message.ErrorMsg;
+                res.ErrorCode = 500;
+                return res;
+            }
+            return res;
+        }
+
+        /// <summary>
+        /// Lấy ds role của account
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [HttpGet("role_of_account")]
+        [AllowAnonymous]
+        public async Task<ServiceResponse> GetRoleAccount(Guid? id)
+        {
+            ServiceResponse res = new ServiceResponse();
+            try
+            {
+                var list = await _db.AccountRoles.Where(_ => _.AccountId == id).ToListAsync();
+                res.Data = list;
             }
             catch (DbUpdateConcurrencyException)
             {

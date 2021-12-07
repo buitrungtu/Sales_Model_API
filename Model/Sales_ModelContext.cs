@@ -194,7 +194,8 @@ namespace Sales_Model.OutputDirectory
 
             modelBuilder.Entity<AccountRole>(entity =>
             {
-                entity.HasNoKey();
+                //entity.HasNoKey();
+                entity.HasKey(x => new { x.AccountId, x.RoleId });
 
                 entity.ToTable("account_role");
 

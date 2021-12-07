@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Sales_Model.Common;
 using Sales_Model.Constants;
 using Sales_Model.Model;
+using Sales_Model.Model.ModelCustom;
 using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
@@ -115,6 +116,43 @@ namespace Sales_Model.Controllers
             {
                 res.Success = false;
             }
+            return res;
+        }
+
+        /// <summary>
+        /// Thêm role
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        /// https://localhost:44335/api/roles/roles_account?id=0f76c9fa-509f-4e75-afde-2a79b5c9df56
+        [HttpPost()]
+        [AllowAnonymous]
+        public async Task<ServiceResponse> AddRole(RoleRequest request)
+        {
+            ServiceResponse res = new ServiceResponse();
+            //if (!Helper.CheckPermission(HttpContext, "Admin"))//Check quyền admin
+            //{
+                
+                var existed = await _db.Roles.FindAsync(request.RoleId);
+                if (existed != null)
+                {
+                    res.Success = false;
+                    res.Message = Message.ErrorMsg;
+                    res.ErrorCode = 4000;
+                    return res;
+                }
+                Role r = new Role
+                {
+                    Name = request.Name,
+                    Role_Code = request.Role_Code
+                };
+                _db.Roles.Add(r);
+                await _db.SaveChangesAsync();
+                res.Message = Message.SuccessMsg;
+                res.ErrorCode = 0;
+                res.Data = r;
+            //}
+            res.Success = true;
             return res;
         }
     }
