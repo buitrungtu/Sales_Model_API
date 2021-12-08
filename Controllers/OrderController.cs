@@ -183,7 +183,7 @@ namespace Sales_Model.Controllers
                     {
                         Id = Guid.NewGuid(),
                         OrderId = order.OrdersId,
-                        ProductName = p.ProductName,
+                        ProductName = p.Title,
                         ProductImage = p.ProductImage,
                         Quantity = oi.quantity,
                         ProductId = p.ProductId,
