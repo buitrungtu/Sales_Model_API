@@ -116,7 +116,7 @@ namespace Sales_Model.Controllers
         /// </summary>
         /// <param name="order"></param>
         /// <returns></returns>
-        /// https://localhost:44335/api/order
+        /// https://localhost:44335/api/orders
         [HttpPost]
         public async Task<ServiceResponse> AddOrder(OrderInfoRequest requests)
         {
@@ -197,17 +197,17 @@ namespace Sales_Model.Controllers
                     total += (double)(p.Discount != null ? (p.Price - p.Discount) * oi.quantity : p.Price * oi.quantity);
                     order.Total = total;
 
-                    //orderItemList.Add(oi);
+                    orderItemList.Add(oi);
                 }
 
-                orderItemList.Add(order.Total);
-                orderItemList.Add(requests);
                 await _db.SaveChangesAsync();
 
                 OrderResponse orderRes = new OrderResponse
                 {
                     items = orderItemList,
                     orderId = order.OrdersId.ToString(),
+                    Total = order.Total,
+                    Status = order.Status,
                     customerName = requests.customerName,
                     customerPhone = requests.customerPhone,
                     customerAddress = requests.customerAddress

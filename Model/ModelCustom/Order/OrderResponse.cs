@@ -8,6 +8,8 @@ namespace Sales_Model.Model.ModelCustom.Order
         public List<object> items { get; set; }
 
         public string orderId { get; set; }
+        public double? Total { get; set; }
+        public int? Status { get; set; }
 
         public string customerName { get; set; }
 
