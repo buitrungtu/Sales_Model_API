@@ -50,13 +50,20 @@ namespace Sales_Model.Controllers
         {
             var pagingData = new PagingData();
             List<Order> records = new List<Order>();
+            records = await _db.Orders.ToListAsync();
 
+            if (!string.IsNullOrEmpty(search))
+            {
+                //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
+                string sql_get_order = "select * from orders where CHARINDEX(@txtSeach, convert(nvarchar(50), orders_id)) > 0";
+                var param = new SqlParameter("@txtSeach", search);
+                records = _db.Orders.FromSqlRaw(sql_get_order, param).OrderByDescending(x => x.CreateDate).ToList();
+            }
             if (!string.IsNullOrEmpty(sort))
             {
                 records = Helper.OrderBy<Order>(records, sort).ToList();
             }
 
-            records = await _db.Orders.ToListAsync();
             //Tổng số bản ghi
             pagingData.TotalRecord = records.Count();
             //Tổng số trang

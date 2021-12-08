@@ -47,8 +47,7 @@ namespace Sales_Model.Controllers
         {
             var pagingData = new PagingData();
             List<Product> records = await _db.Products.ToListAsync();
-
-            //Tổng số bản ghi
+            //Tìm kiếm
             if (!string.IsNullOrEmpty(search))
             {
                 //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
@@ -63,6 +62,7 @@ namespace Sales_Model.Controllers
             {
                 records = Helper.OrderBy<Product>(records, sort).ToList();
             }
+            //Tổng số bản ghi
             pagingData.TotalRecord = records.Count();
             //Tổng số trangalue
             pagingData.TotalPage = Convert.ToInt32(Math.Ceiling((decimal)pagingData.TotalRecord / (decimal)record.Value));
