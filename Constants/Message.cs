@@ -21,6 +21,8 @@ namespace Sales_Model.Constants
         public const string NotAuthorize = "Bạn không có quyền này";
         public const string LoginIncorrect = "Thông tin đăng nhập không chính xác!";
         public const string AccountNotFound = "Không tìm thấy tài khoản này";
+        public const string AccountUsernameExist = "Username đã tồn tại";
+
         public const string AccountLoginAgain = "Bạn vui lòng đăng nhập lại để thực hiện chức năng này";
         public const string AccountLogoutSuccess = "Đăng xuất thành công";
         public const string AccountLogLogin = "Login";

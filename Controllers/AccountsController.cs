@@ -148,6 +148,15 @@ namespace Sales_Model.Controllers
             ServiceResponse res = new ServiceResponse();
             try
             {
+                var checkExist = await _db.Accounts.Where(_ => _.Username.Equals(request.Username)).FirstOrDefaultAsync();
+                if (checkExist != null)
+                {
+                    res.Message = Message.AccountUsernameExist;
+                    res.Success = false;
+                    res.ErrorCode = 400;
+                    return res;
+                }
+
                 Account account = new Account
                 {
                     AccountId = Guid.NewGuid(),

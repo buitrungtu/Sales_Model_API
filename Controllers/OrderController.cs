@@ -42,10 +42,20 @@ namespace Sales_Model.Controllers
         /// https://localhost:44335/api/order?page=2&record=10&search=mô+hình
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<PagingData>> GetOrderList([FromQuery] string s, [FromQuery] int? page = 1, [FromQuery] int? record = 20)
+        public async Task<ActionResult<PagingData>> GetOrderList(
+            [FromQuery] string search,
+            [FromQuery] string sort,
+            [FromQuery] int? page = 1,
+            [FromQuery] int? record = 20)
         {
             var pagingData = new PagingData();
             List<Order> records = new List<Order>();
+
+            if (!string.IsNullOrEmpty(sort))
+            {
+                records = Helper.OrderBy<Order>(records, sort).ToList();
+            }
+
             records = await _db.Orders.ToListAsync();
             //Tổng số bản ghi
             pagingData.TotalRecord = records.Count();
@@ -77,6 +87,7 @@ namespace Sales_Model.Controllers
                 res.Data = null;
             }
             var orderItem = await _db.OrdersItems.Where(_ => _.OrderId == order.OrdersId).ToListAsync();
+
             OrderResponseFull orderRes = new OrderResponseFull
             {
                 items = orderItem,
@@ -168,13 +179,19 @@ namespace Sales_Model.Controllers
                         return res;
                     }
 
-                    OrdersItem orderItem = new OrdersItem();
-                    orderItem.Id = Guid.NewGuid();
-                    orderItem.OrderId = order.OrdersId;
-                    orderItem.ProductId = p.ProductId;
-                    orderItem.Price = (double)(p.Discount != null ? (p.Price - p.Discount) * oi.quantity : p.Price * oi.quantity);
-                    orderItem.CreateDate = DateTime.Now;
-                    orderItem.UpdateDate = DateTime.Now;
+                    OrdersItem orderItem = new OrdersItem
+                    {
+                        Id = Guid.NewGuid(),
+                        OrderId = order.OrdersId,
+                        ProductName = p.ProductName,
+                        ProductImage = p.ProductImage,
+                        Quantity = oi.quantity,
+                        ProductId = p.ProductId,
+                        Price = (double)(p.Discount != null ? (p.Price - p.Discount) * oi.quantity : p.Price * oi.quantity),
+                        CreateDate = DateTime.Now,
+                        UpdateDate = DateTime.Now,
+                    };
+
                     _db.OrdersItems.Add(orderItem);
 
                     total += (double)(p.Discount != null ? (p.Price - p.Discount) * oi.quantity : p.Price * oi.quantity);
@@ -303,7 +320,7 @@ namespace Sales_Model.Controllers
                     res.Success = false;
                     res.Data = null;
                 }
-                
+
                 await _db.SaveChangesAsync();
                 await Helper.WriteLogAsync(HttpContext, Message.OrderStatusChanged);
 

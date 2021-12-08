@@ -401,7 +401,17 @@ namespace Sales_Model.OutputDirectory
                 entity.Property(e => e.Sku)
                     .HasMaxLength(100)
                     .IsUnicode(false)
-                    .HasColumnName("sku");
+                    .HasColumnName("sku"); 
+                
+                entity.Property(e => e.ProductName)
+                    .HasMaxLength(255)
+                    .IsUnicode(false)
+                    .HasColumnName("ProductName"); 
+                
+                entity.Property(e => e.ProductImage)
+                     .HasMaxLength(255)
+                     .IsUnicode(false)
+                     .HasColumnName("ProductImage");
 
                 entity.Property(e => e.UpdateDate)
                     .HasColumnType("datetime")

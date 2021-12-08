@@ -15,6 +15,8 @@ namespace Sales_Model.OutputDirectory
         public double? Discount { get; set; }
         public int? Quantity { get; set; }
         public string Content { get; set; }
+        public string ProductName { get; set; }
+        public string ProductImage { get; set; }
         public DateTime? CreateDate { get; set; }
         public DateTime? UpdateDate { get; set; }
     }
