@@ -32,6 +32,8 @@ namespace Sales_Model.Constants
         public const string AccountLogPassword = "Thay đổi mật khẩu";
 
         //Xử lý message sản phẩm
+        public const string ProductEditSuccess = "Thay đổi thông tin sản phẩm thành công";
+
         public const string ProductLogChange = "Thay đổi thông tin sản phẩm";
         public const string ProductLogDelete = "Xóa sản phẩm";
         public const string ProductLogAdd = "Thêm mới sản phẩm";

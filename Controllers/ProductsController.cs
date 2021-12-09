@@ -294,7 +294,7 @@ namespace Sales_Model.Controllers
         /// <returns></returns>
         /// https://localhost:44335/api/products/edit
         [HttpPost("edit")]
-        public async Task<ServiceResponse> PutAccount(Product product)
+        public async Task<ServiceResponse> PutAccount(ProductRequest product)
         {
             ServiceResponse res = new ServiceResponse();
             if (!Helper.CheckPermission(HttpContext, "EditProduct"))//Check quyền
@@ -330,92 +330,31 @@ namespace Sales_Model.Controllers
                 productDb.Content = product.Content != null ? product.Content.Trim() : productDb.Content;
                 productDb.ProductImage = product.ProductImage != null ? product.ProductImage.Trim() : productDb.ProductImage;
                 //Xử lý các bảng liên quan
+                var listOldCate = await _db.ProductCategories.Where(_ => _.ProductId == product.ProductId).ToListAsync();
+                _db.ProductCategories.RemoveRange(listOldCate);
                 if (product.ProductCategories != null && product.ProductCategories.Count > 0)
                 {
-                    var lstDelete = new List<ProductCategory>();
-                    var lstInsert = new List<ProductCategory>();
-                    foreach (var item in product.ProductCategories)
+                    var list = new List<ProductCategory>();
+                    foreach (var categoryId in product.ProductCategories)
                     {
-                        if (item.State == null) item.State = 0;
-                        switch (item.State)
+                        var category = new ProductCategory
                         {
-                            case (int)RecordStatus.Delete:
-                                lstDelete.Add(item);
-                                break;
-                            case (int)RecordStatus.Add:
-                                lstInsert.Add(item);
-                                break;
-                            default:
-                                break;
-                        }
+                            ProductId = product.ProductId,
+                            CategoryId = categoryId,
+                        };
+                        list.Add(category);
                     }
-                    if (lstDelete.Count > 0)
-                    {
-                        _db.ProductCategories.RemoveRange(lstDelete);
-                    }
-                    if (lstInsert.Count > 0)
-                    {
-                        _db.ProductCategories.AddRange(lstInsert);
-                    }
+                    _db.ProductCategories.AddRange(list);
                 }
-                if (product.ProductTags != null && product.ProductTags.Count > 0)
-                {
-                    var lstDelete = new List<ProductTag>();
-                    var lstInsert = new List<ProductTag>();
-                    foreach (var item in product.ProductTags)
-                    {
-                        if (item.State == null) item.State = 0;
-                        switch (item.State)
-                        {
-                            case (int)RecordStatus.Delete:
-                                lstDelete.Add(item);
-                                break;
-                            case (int)RecordStatus.Add:
-                                lstInsert.Add(item);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    if (lstDelete.Count > 0)
-                    {
-                        _db.ProductTags.RemoveRange(lstDelete);
-                    }
-                    if (lstInsert.Count > 0)
-                    {
-                        _db.ProductTags.AddRange(lstInsert);
-                    }
-                }
-                if (product.ProductMetas != null && product.ProductMetas.Count > 0)
-                {
-                    var lstDelete = new List<ProductMetum>();
-                    var lstInsert = new List<ProductMetum>();
-                    foreach (var item in product.ProductMetas)
-                    {
-                        if (item.State == null) item.State = 0;
-                        switch (item.State)
-                        {
-                            case (int)RecordStatus.Delete:
-                                lstDelete.Add(item);
-                                break;
-                            case (int)RecordStatus.Add:
-                                lstInsert.Add(item);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    if (lstDelete.Count > 0)
-                    {
-                        _db.ProductMeta.RemoveRange(lstDelete);
-                    }
-                    if (lstInsert.Count > 0)
-                    {
-                        _db.ProductMeta.AddRange(lstInsert);
-                    }
-                }
+                
                 await _db.SaveChangesAsync();
-                Helper.WriteLogAsync(HttpContext, Message.ProductLogChange);
+                Helper.WriteLogAsync(HttpContext, Message.ProductLogChange); 
+
+                res.Success = true;
+                res.Message = Message.ProductEditSuccess;
+                res.Data = productDb;
+
+                return res;
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -424,7 +363,6 @@ namespace Sales_Model.Controllers
                 res.ErrorCode = 500;
                 return res;
             }
-            return res;
         }
 
         /// <summary>
