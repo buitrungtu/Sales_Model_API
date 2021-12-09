@@ -226,6 +226,7 @@ namespace Sales_Model.Controllers
                     ProductCode = product.ProductCode,
                     ProductName = product.ProductName,
                     ProductPrimaryImage = product.ProductPrimaryImage,
+                    ProductImage = product.ProductImage,
                     ImportPrice = product.ImportPrice,
                     SellingPrice = product.SellingPrice,
                     Title = product.Title,
