@@ -40,6 +40,13 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> AddCategory(Category category)
         {
             ServiceResponse res = new ServiceResponse();
+            if (!Helper.CheckPermission(HttpContext, "AddCategory"))//Check quyền xóa
+            {
+                res.Success = false;
+                res.Message = Message.NotAuthorize;
+                res.ErrorCode = 403;
+                return res;
+            }
             try
             {
                 if (category.Title == null || string.IsNullOrEmpty(category.Title))
@@ -78,6 +85,13 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> EditCategory(Category category)
         {
             ServiceResponse res = new ServiceResponse();
+            if (!Helper.CheckPermission(HttpContext, "EditCategory"))//Check quyền xóa
+            {
+                res.Success = false;
+                res.Message = Message.NotAuthorize;
+                res.ErrorCode = 403;
+                return res;
+            }
             try
             {
                 if (string.IsNullOrEmpty(category.CategoryId.ToString()))

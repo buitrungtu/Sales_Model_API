@@ -42,11 +42,23 @@ namespace Sales_Model.Controllers
         public async Task<ActionResult<PagingData>> GetSuppliersByPage(
             [FromQuery] string search,
             [FromQuery] string sort,
+            [FromQuery] Guid? categoryId,
             [FromQuery] int? page = 1,
             [FromQuery] int? record = 20)
         {
             var pagingData = new PagingData();
             List<Product> records = await _db.Products.ToListAsync();
+
+            //category filter
+            if (!string.IsNullOrEmpty(categoryId.ToString()))
+            {
+                string sql_get_category = $"select * from product p where p.product_id in (select pc.product_id from product_category pc where pc.category_id = @category_id)";
+
+                records = _db.Products
+                    .FromSqlRaw(sql_get_category, new SqlParameter("@category_id", categoryId))
+                    .ToList();
+            }
+
             //Tìm kiếm
             if (!string.IsNullOrEmpty(search))
             {

@@ -128,6 +128,13 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> AddOrder(OrderInfoRequest requests)
         {
             ServiceResponse res = new ServiceResponse();
+            //if (!Helper.CheckPermission(HttpContext, "AddOrder"))
+            //{
+            //    res.Success = false;
+            //    res.Message = Message.NotAuthorize;
+            //    res.ErrorCode = 403;
+            //    return res;
+            //}
             try
             {
                 Order order = new Order();
@@ -243,14 +250,13 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> DeleteOrder(Guid? id)
         {
             ServiceResponse res = new ServiceResponse();
-            //if (!Helper.CheckPermission(HttpContext, "DeleteOrder"))//Check quyền xóa
-            //{
-            //    res.Success = false;
-            //    res.Message = Message.NotAuthorize;
-            //    res.ErrorCode = 403;
-            //    res.Data = Message.NotAuthorize;
-            //    return res;
-            //}
+            if (!Helper.CheckPermission(HttpContext, "DeleteOrder"))
+            {
+                res.Success = false;
+                res.Message = Message.NotAuthorize;
+                res.ErrorCode = 403;
+                return res;
+            }
             try
             {
                 var order = await _db.Orders.FindAsync(id);
@@ -291,15 +297,13 @@ namespace Sales_Model.Controllers
         public async Task<ServiceResponse> ChangeOrderStatus(OrderInfoRequest req)
         {
             ServiceResponse res = new ServiceResponse();
-            //if (!Helper.CheckPermission(HttpContext, "Admin"))//Check quyền xóa
-            //{
-            //    res.Success = false;
-            //    res.Message = Message.NotAuthorize;
-            //    res.ErrorCode = 403;
-            //    res.Data = Message.NotAuthorize;
-            //}
-            //else
-            //{
+            if (!Helper.CheckPermission(HttpContext, "ChangeOrder"))//Check quyền xóa
+            {
+                res.Success = false;
+                res.Message = Message.NotAuthorize;
+                res.ErrorCode = 403;
+                return res;
+            }
             try
             {
                 var order = await _db.Orders.FindAsync(req.orderId);

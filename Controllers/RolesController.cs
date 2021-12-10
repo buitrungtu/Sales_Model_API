@@ -44,7 +44,7 @@ namespace Sales_Model.Controllers
 
             }
             res.Success = false;
-            res.Message = "Bạn không có quyền này";
+            res.Message = Message.NotAuthorize;
             res.ErrorCode = 403;
             return res;
         }
@@ -83,7 +83,7 @@ namespace Sales_Model.Controllers
                 res.ErrorCode = 403;
                 return res;
             }
-            if(lstAccountRole != null && lstAccountRole.Count() > 0)
+            if (lstAccountRole != null && lstAccountRole.Count() > 0)
             {
                 var lstDelete = new List<AccountRole>();
                 var lstInsert = new List<AccountRole>();
@@ -131,7 +131,6 @@ namespace Sales_Model.Controllers
             ServiceResponse res = new ServiceResponse();
             if (!Helper.CheckPermission(HttpContext, "Admin"))//Check quyền admin
             {
-                
                 var existed = await _db.Roles.FindAsync(request.RoleId);
                 if (existed != null)
                 {
