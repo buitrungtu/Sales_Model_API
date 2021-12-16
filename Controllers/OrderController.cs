@@ -220,7 +220,6 @@ namespace Sales_Model.Controllers
                     orderItemList.Add(oi);
 
                     p.Quantity = p.Quantity - oi.quantity;
-                    _db.Products.Add(p);
                 }
 
                 await _db.SaveChangesAsync();
