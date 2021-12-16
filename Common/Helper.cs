@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -60,16 +62,17 @@ namespace Sales_Model.Common
         public static bool CheckPermission(HttpContext httpContext, string role_code)
         {
             Dictionary<string, object> account_login = JsonConvert.DeserializeObject<Dictionary<string, object>>(httpContext.User.Identity.Name);
-            if (account_login != null && account_login.ContainsKey("roles"))
+            if (account_login != null && account_login.ContainsKey("account"))
             {
+                JObject jAccount = account_login["account"] as JObject;
+                Account account = jAccount.ToObject<Account>();
 
-                List<Object> roles = new List<Object>((IEnumerable<Object>)account_login["roles"]);
+                string sql_get_role = $"select * from role where role_id in (select distinct role_id from account_role where account_id = @account_id)";
+                var roles = _db.Roles.FromSqlRaw(sql_get_role, new SqlParameter("@account_id", account.AccountId)).ToList();
 
-                for (int i =0 ; i < roles.Count(); i ++)
+                for (int i = 0 ; i < roles.Count(); i ++)
                 {
-                    JObject jrole = roles[i] as JObject;
-                    Role item = jrole.ToObject<Role>();
-                    if(item.Role_Code == role_code || item.Name == "Admin")
+                    if(roles[i].Role_Code == role_code || roles[i].Name == "Admin")
                     {
                         return true; // Nếu là admin hoặc có cái quyền này thì cho qua
                     }
