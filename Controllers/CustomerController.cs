@@ -6,6 +6,7 @@ using Sales_Model.Common;
 using Sales_Model.Constants;
 using Sales_Model.Model;
 using Sales_Model.Model.ModelCustom;
+using Sales_Model.Model.ModelCustom.Order;
 using Sales_Model.OutputDirectory;
 using System;
 using System.Collections.Generic;
@@ -184,6 +185,15 @@ namespace Sales_Model.Controllers
             }
             try
             {
+                var checkExist = await _db.Customers.Where(_ => _.Username.Equals(customer.Username)).FirstOrDefaultAsync();
+                if (checkExist != null)
+                {
+                    res.Message = Message.AccountUsernameExist;
+                    res.Success = false;
+                    res.ErrorCode = 400;
+                    return res;
+                }
+
                 customer.CustomerId = Guid.NewGuid();
                 customer.DisplayName = customer.DisplayName.Trim();
                 customer.Username = customer.Username.Trim();
@@ -193,10 +203,12 @@ namespace Sales_Model.Controllers
                 customer.Status = AccountStatus.Active;
                 customer.Password = Helper.EncodeMD5(customer.Password.Trim());
                 _db.Customers.Add(customer);
+                await _db.SaveChangesAsync();
 
                 res.Success = true;
+                customer.Password = Helper.EncodeMD5(customer.Password.Trim());
                 res.Data = customer;
-                await _db.SaveChangesAsync();
+                
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -299,6 +311,59 @@ namespace Sales_Model.Controllers
                 res.Data = account;
                 res.Success = true;
             }
+            return res;
+        }
+
+        /// <summary>
+        /// Lấy order theo customer id
+        /// </summary>
+        /// <param name="id">id của customer</param>
+        /// <returns></returns>
+        /// https://localhost:44335/api/customer/order?id=7e8dbefb-74e6-46c5-9386-302008af7fb3
+        [AllowAnonymous]
+        [HttpPost("order")]
+        public async Task<ServiceResponse> GetOrderDetail(Guid? id)
+        {
+            ServiceResponse res = new ServiceResponse();
+            //var userInfo = _cache.Get("account_info");
+            var customer = _db.Customers.FindAsync(id);
+
+            var orders = await _db.Orders.Where(_ => _.AccountId == id).ToListAsync();
+            if (orders == null || orders.Count < 0)
+            {
+                res.Message = Message.OrderNotFound;
+                res.ErrorCode = 404;
+                res.Success = false;
+                res.Data = null;
+            }
+            foreach (var order in orders)
+            {
+                var orderItem = await _db.OrdersItems.Where(_ => _.OrderId == order.OrdersId).ToListAsync();
+
+                OrderResponseFull orderRes = new OrderResponseFull
+                {
+                    items = orderItem,
+                    orderId = order.OrdersId.ToString(),
+                    customerName = order.CustomerName,
+                    customerPhone = order.CustomerPhone,
+                    customerAddress = order.CustomerAddress,
+                    Status = order.Status,
+                    SubTotal = order.SubTotal,
+                    ItemDiscount = order.ItemDiscount,
+                    Tax = order.Tax,
+                    Shipping = order.Shipping,
+                    Total = order.Total,
+                    Promo = order.Promo,
+                    Discount = order.Discount,
+                    GrandTotal = order.GrandTotal,
+                    Content = order.Content,
+                };
+
+
+            }
+            
+            res.Data = orders;
+            res.Success = true;
             return res;
         }
     }

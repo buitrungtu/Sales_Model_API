@@ -42,7 +42,7 @@ namespace Sales_Model.Controllers
         /// https://localhost:44335/api/order?page=2&record=10&search=mô+hình
         [AllowAnonymous]
         [HttpGet]
-        public async Task<ActionResult<PagingData>> GetOrderList(
+        public async Task<ActionResult<PagingData>> GetOrderList([FromQuery] Guid? customerId,
             [FromQuery] string search,
             [FromQuery] string sort,
             [FromQuery] int? page = 1,
@@ -51,7 +51,13 @@ namespace Sales_Model.Controllers
             var pagingData = new PagingData();
             List<Order> records = new List<Order>();
             records = await _db.Orders.ToListAsync();
+            List<OrderResponseFull> customerOrder = new List<OrderResponseFull>();
 
+            if (!string.IsNullOrEmpty(customerId.ToString()))
+            {
+                records = await _db.Orders.Where(_ => _.AccountId.Equals(customerId.ToString())).ToListAsync();
+            }
+            
             if (!string.IsNullOrEmpty(search))
             {
                 //CHARINDEX tìm không phân biệt hoa thường trả về vị trí đầu tiên xuất hiện của chuỗi con
@@ -212,6 +218,9 @@ namespace Sales_Model.Controllers
                     order.Total = total;
 
                     orderItemList.Add(oi);
+
+                    p.Quantity = p.Quantity - oi.quantity;
+                    _db.Products.Add(p);
                 }
 
                 await _db.SaveChangesAsync();
