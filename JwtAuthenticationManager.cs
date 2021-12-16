@@ -41,8 +41,9 @@ namespace Sales_Model
             Dictionary<string, object> result = new Dictionary<string, object>();
             string sql_get_role = $"select * from role where role_id in (select distinct role_id from account_role where account_id = @account_id)";
             var roles = _db.Roles.FromSqlRaw(sql_get_role, new SqlParameter("@account_id", accountResult.AccountId)).ToList();
-            result.Add("account", accountResult);
-            result.Add("roles", roles);
+            var account = (IDictionary<string, object>)accountResult;
+            account.Remove("Password");
+            result.Add("account", account);
             var tokenHandler = new JwtSecurityTokenHandler();
             var tokenKey = Encoding.ASCII.GetBytes(key);
             var tokenDesciptor = new SecurityTokenDescriptor
